@@ -3,7 +3,8 @@ BuildTools Windows GUI
 
 The goal for this is, when it's finished, to be an easy to use, self-contained BuildTools GUI for Windows. It will
 check for and automatically setup the proper environment for BuildTools to run in, as well as automatically check for
-and download updates to the BuildTools jar itself. It is currently about 70% done.
+and download updates to the BuildTools jar itself. It is currently working on 64 bit systems, there seems to be some
+issues when running with a 32 bit JVM. This seems to be a BuildTools.jar issue, though.
 
 Building
 --------
