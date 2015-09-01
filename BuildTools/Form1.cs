@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -8,26 +9,45 @@ namespace BuildTools
     {
         // Delegates
         private delegate void AppendTextDelegate(string text);
-        private AppendTextDelegate ThisDelegate;
+        private readonly AppendTextDelegate _appendDelegate;
 
         private delegate void DisableDelegate();
-        private DisableDelegate ThisDisableDelegate;
+        private readonly DisableDelegate _disableDelegate;
 
         private delegate void EnableDelegate();
-        private EnableDelegate ThisEnableDelegate;
+        private readonly EnableDelegate _enableDelegate;
+
+        private delegate void ShowProgressDelegate();
+        private readonly ShowProgressDelegate _showProgressDelegate;
+
+        private delegate void HideProgressDelegate();
+        private readonly HideProgressDelegate _hideProgressDelegate;
+
+        private delegate void IndeterminateProgressDelegate();
+        private readonly IndeterminateProgressDelegate _indeterminateProgressDelegate;
+
+        private delegate void ProgressPercentDelegate(int place, int total);
+        private readonly ProgressPercentDelegate _progressPercentDelegate;
 
         // Stuff
         private readonly Runner _runner;
-        private string lastLog = "";
+        private string _lastLog = "";
 
         public BuildTools()
         {
             InitializeComponent();
             _runner = new Runner(this);
             undoBT.Visible = false;
-            ThisDelegate = AppendText;
-            ThisDisableDelegate = DisableTS;
-            ThisEnableDelegate = EnableTS;
+            progress.Visible = false;
+
+
+            _appendDelegate = AppendText;
+            _disableDelegate = Disable;
+            _enableDelegate = Enable;
+            _showProgressDelegate = ProgressShow;
+            _hideProgressDelegate = ProgressHide;
+            _indeterminateProgressDelegate = ProgressIndeterminate;
+            _progressPercentDelegate = Progress;
         }
 
         // Run BuildTools Button Clicked
@@ -38,6 +58,7 @@ namespace BuildTools
             {
                 _runner.RunBuildTools(update);
                 Enable();
+                ProgressHide();
             });
             Disable();
             thread.Start();
@@ -50,6 +71,7 @@ namespace BuildTools
             {
                 _runner.RunUpdate();
                 Enable();
+                ProgressHide();
             });
             Disable();
             thread.Start();
@@ -58,7 +80,7 @@ namespace BuildTools
         // Clear Log Button Clicked
         private void clearBT_Click(object sender, EventArgs e)
         {
-            lastLog = outputTB.Text;
+            _lastLog = outputTB.Text;
             outputTB.Text = "";
             undoBT.Visible = true;
         }
@@ -66,8 +88,8 @@ namespace BuildTools
         // Undo Button Clicked
         private void undoBT_Click(object sender, EventArgs e)
         {
-            outputTB.Text = lastLog + outputTB.Text;
-            lastLog = "";
+            outputTB.Text = _lastLog + outputTB.Text;
+            _lastLog = "";
             undoBT.Visible = false;
         }
 
@@ -78,38 +100,104 @@ namespace BuildTools
         /// <param name="text">Text to append to the output textbox.</param>
         public void AppendText(string text)
         {
-            if (outputTB.InvokeRequired)
+            if (InvokeRequired)
             {
-                Invoke(ThisDelegate, text);
+                Invoke(_appendDelegate, text);
             }
             else
             {
                 outputTB.AppendText(text + "\n");
+                outputTB.ScrollToCaret();
             }
         }
 
         // Disable
         private void Disable()
         {
-            Invoke(ThisDisableDelegate);
-        }
-
-        private void DisableTS()
-        {
-            updateBT.Enabled = false;
-            runBT.Enabled = false;
+            if (InvokeRequired)
+            {
+                Invoke(_disableDelegate);
+            }
+            else
+            {
+                updateBT.Enabled = false;
+                runBT.Enabled = false;
+            }
+            
         }
 
         // Enable
         private void Enable()
         {
-            Invoke(ThisEnableDelegate);
+            if (InvokeRequired)
+            {
+                Invoke(_enableDelegate);
+            }
+            else
+            {
+                updateBT.Enabled = true;
+                runBT.Enabled = true;
+            }
         }
 
-        private void EnableTS()
+        // Progress Show
+        public void ProgressShow()
         {
-            updateBT.Enabled = true;
-            runBT.Enabled = true;
+            if (InvokeRequired)
+            {
+                Invoke(_showProgressDelegate);
+            }
+            else
+            {
+                progress.Visible = true;
+            }
+        }
+
+        // Progress Hide
+        public void ProgressHide()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(_hideProgressDelegate);
+            }
+            else
+            {
+                progress.Visible = false;
+            }
+        }
+
+        // Progress indeterminate
+        public void ProgressIndeterminate()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(_indeterminateProgressDelegate);
+            }
+            else
+            {
+                progress.Style = ProgressBarStyle.Marquee;
+            }
+        }
+
+        // Progress percent
+        public void Progress(int place, int total)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(_progressPercentDelegate, place, total);
+            }
+            else
+            {
+                progress.Style = ProgressBarStyle.Continuous;
+                progress.Minimum = 0;
+                progress.Maximum = total;
+                progress.Value = place;
+            }
+        }
+
+        private void BuildTools_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            Application.Exit();
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.IO;
+using System.Runtime.Remoting.Channels;
 using System.Threading;
 using Ionic.Zip;
 using Microsoft.Win32;
@@ -14,6 +15,7 @@ namespace BuildTools
     {
         private readonly BuildTools form;
         private readonly string fileName = "core.jar";
+        private readonly string gitDir = "PortableGit";
         private readonly string apiUrl = "https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/api/json";
         private JObject _json;
 
@@ -151,11 +153,9 @@ namespace BuildTools
             string relativePath = (string) _json["artifacts"][0]["relativePath"];
             string fullUrl = baseUrl + "artifact/" + relativePath;
 
-            using (WebClient client = new WebClient())
-            {
-                form.AppendText("--- Downloading BuildTools");
-                client.DownloadFile(fullUrl, fileName);
-            }
+            form.AppendText("--- Downloading BuildTools");
+            DownloadFile(fullUrl, fileName);
+            
         }
 
         /// <summary>
@@ -164,6 +164,8 @@ namespace BuildTools
         public void RunUpdate()
         {
             form.AppendText("--- Checking for update");
+            form.ProgressShow();
+            form.ProgressIndeterminate();
             bool update = CheckUpdate();
             if (update)
             {
@@ -183,6 +185,8 @@ namespace BuildTools
         /// <param name="autoUpdate">If true, this will first call <see cref="RunUpdate()"/> Before continuing.</param>
         public void RunBuildTools(bool autoUpdate)
         {
+            form.ProgressShow();
+            form.ProgressIndeterminate();
             if (autoUpdate)
             {
                 RunUpdate();
@@ -192,12 +196,18 @@ namespace BuildTools
             if (!CheckJava())
             {
                 string javaFile = "latest_java.exe";
-                using (WebClient client = new WebClient())
+                form.AppendText("--- Downloading Java Installer");
+                if (Environment.Is64BitOperatingSystem)
                 {
-                    form.AppendText("--- Downloading Java Installer");
-                    
-                    client.DownloadFile("http://javadl.sun.com/webapps/download/AutoDL?BundleId=109715", javaFile);
+                    DownloadFile("http://javadl.sun.com/webapps/download/AutoDL?BundleId=109708", javaFile);
                 }
+                else
+                {
+                    DownloadFile("http://javadl.sun.com/webapps/download/AutoDL?BundleId=109706", javaFile);
+                }
+                
+                
+                form.ProgressIndeterminate();
                 using (Process installProcess = new Process())
                 {
                     form.AppendText("--- Running Java Installer");
@@ -220,7 +230,62 @@ namespace BuildTools
             }
 
             // Git check
+            if (!CheckGit())
+            {
+                string gitFile = "portable_git.7z.exe";
+                form.AppendText("--- Downloading Portable Git");
 
+                if (Environment.Is64BitOperatingSystem)
+                {
+                    DownloadFile("http://static.spigotmc.org/git/PortableGit-2.5.0-64-bit.7z.exe", gitFile);
+                }
+                else
+                {
+                    DownloadFile("http://static.spigotmc.org/git/PortableGit-2.5.0-32-bit.7z.exe", gitFile);
+                }
+
+                form.ProgressIndeterminate();
+                using (Process extractProcess = new Process())
+                {
+                    form.AppendText("--- Extracting Portable Git");
+                    extractProcess.StartInfo.FileName = gitFile;
+                    extractProcess.StartInfo.UseShellExecute = true;
+                    extractProcess.StartInfo.Arguments = "-gm1 -nr -y";
+                    extractProcess.Start();
+                    extractProcess.WaitForExit();
+                }
+                Thread.Sleep(100);
+                File.Delete(gitFile);
+
+                if (CheckGit())
+                {
+                    form.AppendText("--- Portable Git Installed Successfully");
+                }
+                else
+                {
+                    form.AppendText("--- Portable Git could not be installed, canceling");
+                    return;
+                }
+            }
+
+            form.AppendText("\n--- Running BuildTools.jar\n");
+            // Run Build Tools
+            using (Process buildProcess = new Process())
+            {
+                buildProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                buildProcess.StartInfo.CreateNoWindow = true;
+                buildProcess.StartInfo.FileName = gitDir + "/bin/bash.exe";
+                buildProcess.StartInfo.UseShellExecute = false;
+                buildProcess.StartInfo.RedirectStandardOutput = true;
+                buildProcess.StartInfo.RedirectStandardError = true;
+                buildProcess.StartInfo.Arguments = "--login -c \"java -jar " + fileName + "\"";
+                buildProcess.OutputDataReceived += (sender, args) => form.AppendText(args.Data);
+                buildProcess.ErrorDataReceived += (sender, args) => form.AppendText(args.Data);
+                buildProcess.Start();
+                buildProcess.BeginOutputReadLine();
+                buildProcess.BeginErrorReadLine();
+                buildProcess.WaitForExit();
+            }
         }
 
         /// <summary>
@@ -229,6 +294,9 @@ namespace BuildTools
         /// <returns>True if Java is installed correctly</returns>
         private bool CheckJava()
         {
+            string path = (string) Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment", "Path", "");
+            Environment.SetEnvironmentVariable("Path", path, EnvironmentVariableTarget.Process);
+
             using (Process process = new Process())
             {
                 try
@@ -237,8 +305,7 @@ namespace BuildTools
                     process.StartInfo.CreateNoWindow = true;
                     process.StartInfo.FileName = "java";
                     process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.StartInfo.RedirectStandardError = true;
+
                     process.StartInfo.Arguments = "-version";
                     process.Start();
                     process.WaitForExit();
@@ -247,6 +314,64 @@ namespace BuildTools
                 catch (Exception)
                 {
                     return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns>True if portable git is installed correctly</returns>
+        private bool CheckGit()
+        {
+            if (Directory.Exists(gitDir))
+            {
+                using (Process process = new Process())
+                {
+                    try
+                    {
+                        process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                        process.StartInfo.CreateNoWindow = true;
+                        process.StartInfo.FileName = gitDir + "/bin/bash.exe";
+                        process.StartInfo.UseShellExecute = false;
+                        process.StartInfo.RedirectStandardOutput = true;
+                        process.StartInfo.RedirectStandardError = true;
+                        process.StartInfo.Arguments = "\"--login\" \"-i\" \"-c\" \"exit\"";
+                        process.Start();
+                        process.WaitForExit();
+                        return true;
+                    }
+                    catch (Exception)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private void DownloadFile(string url, string dest)
+        {
+            using (WebClient client = new WebClient())
+            {
+                client.DownloadProgressChanged += (sender, e) =>
+                {
+                    double bytesIn = e.BytesReceived;
+                    double totalBytes = e.TotalBytesToReceive;
+                    if (totalBytes < 0)
+                    {
+                        form.ProgressIndeterminate();
+                    }
+                    else
+                    {
+                        form.Progress((int) bytesIn, (int) totalBytes);
+                    }
+                };
+                client.DownloadFileAsync(new Uri(url), dest);
+                while (client.IsBusy)
+                {
+                    Thread.Sleep(50);
                 }
             }
         }

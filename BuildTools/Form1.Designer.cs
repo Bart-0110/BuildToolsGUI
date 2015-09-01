@@ -35,6 +35,7 @@
             this.outputTB = new System.Windows.Forms.RichTextBox();
             this.clearBT = new System.Windows.Forms.Button();
             this.undoBT = new System.Windows.Forms.Button();
+            this.progress = new System.Windows.Forms.ProgressBar();
             this.SuspendLayout();
             // 
             // runBT
@@ -106,11 +107,21 @@
             this.undoBT.UseVisualStyleBackColor = true;
             this.undoBT.Click += new System.EventHandler(this.undoBT_Click);
             // 
+            // progress
+            // 
+            this.progress.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.progress.Location = new System.Drawing.Point(13, 526);
+            this.progress.Name = "progress";
+            this.progress.Size = new System.Drawing.Size(447, 23);
+            this.progress.TabIndex = 6;
+            // 
             // BuildTools
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(634, 561);
+            this.Controls.Add(this.progress);
             this.Controls.Add(this.undoBT);
             this.Controls.Add(this.clearBT);
             this.Controls.Add(this.outputTB);
@@ -121,6 +132,7 @@
             this.MinimumSize = new System.Drawing.Size(650, 85);
             this.Name = "BuildTools";
             this.Text = "BuildTools";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.BuildTools_FormClosed);
             this.ResumeLayout(false);
 
         }
@@ -133,6 +145,7 @@
         private System.Windows.Forms.RichTextBox outputTB;
         private System.Windows.Forms.Button clearBT;
         private System.Windows.Forms.Button undoBT;
+        private System.Windows.Forms.ProgressBar progress;
     }
 }
 
