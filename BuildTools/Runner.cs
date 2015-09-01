@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.IO;
-using System.Runtime.Remoting.Channels;
 using System.Threading;
 using Ionic.Zip;
 using Microsoft.Win32;
@@ -13,15 +12,17 @@ namespace BuildTools
 {
     public class Runner
     {
-        private readonly BuildTools form;
-        private readonly string fileName = "core.jar";
+        private readonly BuildTools _form;
         private readonly string gitDir = "PortableGit";
-        private readonly string apiUrl = "https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/api/json";
+        private JObject _api;
         private JObject _json;
+
+        private readonly List<Process> processes = new List<Process>();
+        private readonly List<WebClient> clients = new List<WebClient>(); 
 
         public Runner(BuildTools form)
         {
-            this.form = form;
+            _form = form;
         }
 
         /// <summary>
@@ -32,11 +33,13 @@ namespace BuildTools
         /// <returns>True if an update is needed.</returns>
         public bool CheckUpdate()
         {
-            if (File.Exists(fileName))
+            if (!GetJson())
             {
-                GetJson();
-
-                int number = (int) _json["number"];
+                return false;
+            }
+            if (File.Exists((string) _json["buildTools"]["name"]))
+            {
+                int number = (int) _api["number"];
                 int currentBuildNumber;
                 bool success = GetBuildNumberFromJar(out currentBuildNumber);
 
@@ -44,14 +47,14 @@ namespace BuildTools
                 {
                     bool update = currentBuildNumber < number;
                     if (update)
-                        form.AppendText("--- BuildTools is out of date");
+                        _form.AppendText("--- BuildTools is out of date");
                     
                     return update;
                 }
             }
             else
             {
-                form.AppendText("--- BuildTools does not exist");
+                _form.AppendText("--- BuildTools does not exist");
             }
             return true;
         }
@@ -59,27 +62,51 @@ namespace BuildTools
         /// <summary>
         /// Get the JSON response from the jenkins server and save it as a JObject.
         /// </summary>
-        private void GetJson()
+        private bool GetJson()
         {
             if (_json == null)
             {
-                form.AppendText("--- Retrieving information from server");
-                WebRequest request = WebRequest.Create(apiUrl);
-                Stream stream = request.GetResponse().GetResponseStream();
-                if (stream != null)
+                _form.AppendText("--- Retrieving information from server");
+
+                _json = DownloadJson("http://demonwav.com/buildtools.json");
+
+                if (_json == null)
                 {
-                    StreamReader reader = new StreamReader(stream);
-
-                    string line = "";
-                    string finalOutput = "";
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        finalOutput += line + "\n";
-                    }
-
-                    _json = JObject.Parse(finalOutput);
+                    _form.AppendText("--- Error retrieving data, canceling");
+                    return false;
                 }
             }
+            if (_api == null)
+            {
+                _api = DownloadJson((string) _json["buildTools"]["api"]);
+
+                if (_api == null)
+                {
+                    _form.AppendText("--- Error retrieving data, canceling");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private JObject DownloadJson(string url)
+        {
+            WebRequest request = WebRequest.Create(url);
+            Stream stream = request.GetResponse().GetResponseStream();
+            if (stream != null)
+            {
+                StreamReader reader = new StreamReader(stream);
+
+                string line;
+                string finalOutput = "";
+                while ((line = reader.ReadLine()) != null)
+                {
+                    finalOutput += line + "\n";
+                }
+
+                return JObject.Parse(finalOutput);
+            }
+            return null;
         }
 
         /// <summary>
@@ -90,10 +117,10 @@ namespace BuildTools
         /// <returns>Whether the jar file is valid.</returns>
         private bool GetBuildNumberFromJar(out int i)
         {
-            form.AppendText("--- Checking downloaded BuildTools");
+            _form.AppendText("--- Checking downloaded BuildTools");
             try
             {
-                using (ZipFile zip = ZipFile.Read(fileName))
+                using (ZipFile zip = ZipFile.Read((string) _json["buildTools"]["name"]))
                 {
                     ZipEntry entry = zip["META-INF/MANIFEST.MF"];
                     using (MemoryStream stream = new MemoryStream())
@@ -103,7 +130,7 @@ namespace BuildTools
 
                         StreamReader reader = new StreamReader(stream);
 
-                        string line = "";
+                        string line;
                         while ((line = reader.ReadLine()) != null)
                         {
                             if (line.StartsWith("Implementation-Version: "))
@@ -114,7 +141,7 @@ namespace BuildTools
                                 // at least put some effort into making sure this is a BuildTools jar
                                 if (!"git".Equals(split[0]) || !"BuildTools".Equals(split[1]))
                                 {
-                                    form.AppendText("--- Jar is invalid");
+                                    _form.AppendText("--- Jar is invalid");
                                     i = 0;
                                     return false;
                                 }
@@ -130,7 +157,7 @@ namespace BuildTools
             }
             catch (Exception)
             {
-                form.AppendText("--- Jar is invalid");
+                _form.AppendText("--- Jar is invalid");
                 i = 0;
                 return false;
             }
@@ -141,20 +168,23 @@ namespace BuildTools
         /// </summary>
         public void UpdateJar()
         {
-            if (File.Exists(fileName))
+            if (!GetJson())
             {
-                form.AppendText("--- Deleting current BuildTools");
-                File.Delete(fileName);
+                return;
             }
 
-            GetJson();
+            if (File.Exists((string) _json["buildTools"]["name"]))
+            {
+                _form.AppendText("--- Deleting current BuildTools");
+                File.Delete((string) _json["buildTools"]["name"]);
+            }
 
-            string baseUrl = (string) _json["url"];
-            string relativePath = (string) _json["artifacts"][0]["relativePath"];
+            string baseUrl = (string) _api["url"];
+            string relativePath = (string) _api["artifacts"][0]["relativePath"];
             string fullUrl = baseUrl + "artifact/" + relativePath;
 
-            form.AppendText("--- Downloading BuildTools");
-            DownloadFile(fullUrl, fileName);
+            _form.AppendText("--- Downloading BuildTools");
+            DownloadFile(fullUrl, (string) _json["buildTools"]["name"]);
             
         }
 
@@ -163,18 +193,18 @@ namespace BuildTools
         /// </summary>
         public void RunUpdate()
         {
-            form.AppendText("--- Checking for update");
-            form.ProgressShow();
-            form.ProgressIndeterminate();
+            _form.AppendText("--- Checking for update");
+            _form.ProgressShow();
+            _form.ProgressIndeterminate();
             bool update = CheckUpdate();
             if (update)
             {
                 UpdateJar();
-                form.AppendText("--- Download complete");
+                _form.AppendText("--- Download complete");
             }
             else
             {
-                form.AppendText("--- BuildTools is up to date, no need to update");
+                _form.AppendText("--- BuildTools is up to date, no need to update");
             }
         }
 
@@ -185,8 +215,8 @@ namespace BuildTools
         /// <param name="autoUpdate">If true, this will first call <see cref="RunUpdate()"/> Before continuing.</param>
         public void RunBuildTools(bool autoUpdate)
         {
-            form.ProgressShow();
-            form.ProgressIndeterminate();
+            _form.ProgressShow();
+            _form.ProgressIndeterminate();
             if (autoUpdate)
             {
                 RunUpdate();
@@ -195,36 +225,53 @@ namespace BuildTools
             // Java check
             if (!CheckJava())
             {
-                string javaFile = "latest_java.exe";
-                form.AppendText("--- Downloading Java Installer");
+                string javaFile = (string) _json["json"]["name"];
+                _form.AppendText("--- Downloading Java Installer");
                 if (Environment.Is64BitOperatingSystem)
                 {
-                    DownloadFile("http://javadl.sun.com/webapps/download/AutoDL?BundleId=109708", javaFile);
+                    DownloadFile((string) _json["java"]["64"], javaFile);
                 }
                 else
                 {
-                    DownloadFile("http://javadl.sun.com/webapps/download/AutoDL?BundleId=109706", javaFile);
+                    DownloadFile((string)_json["java"]["32"], javaFile);
                 }
                 
                 
-                form.ProgressIndeterminate();
+                _form.ProgressIndeterminate();
                 using (Process installProcess = new Process())
                 {
-                    form.AppendText("--- Running Java Installer");
-                    installProcess.StartInfo.FileName = javaFile;
-                    installProcess.Start();
-                    installProcess.WaitForExit();
+                    _form.AppendText("--- Running Java Installer");
+                    processes.Add(installProcess);
+                    try
+                    {
+                        installProcess.StartInfo.FileName = javaFile;
+                        installProcess.Start();
+                        installProcess.WaitForExit();
+
+                        if (installProcess.ExitCode != 0)
+                            throw new Exception();
+                    }
+                    catch (Exception)
+                    {
+                        _form.AppendText("--- There was a problem while install Java");
+                        return;
+                    }
+                    finally
+                    {
+                        processes.Remove(installProcess);
+                    }
+                    
                 }
                 Thread.Sleep(100);
                 File.Delete(javaFile);
 
                 if (CheckJava())
                 {
-                    form.AppendText("--- Java Installed Successfully");
+                    _form.AppendText("--- Java Installed Successfully");
                 }
                 else
                 {
-                    form.AppendText("--- Java could not be installed, canceling");
+                    _form.AppendText("--- Java could not be installed, canceling");
                     return;
                 }
             }
@@ -233,58 +280,90 @@ namespace BuildTools
             if (!CheckGit())
             {
                 string gitFile = "portable_git.7z.exe";
-                form.AppendText("--- Downloading Portable Git");
+                _form.AppendText("--- Downloading Portable Git");
 
                 if (Environment.Is64BitOperatingSystem)
                 {
-                    DownloadFile("http://static.spigotmc.org/git/PortableGit-2.5.0-64-bit.7z.exe", gitFile);
+                    DownloadFile((string)_json["git"]["64"], gitFile);
                 }
                 else
                 {
-                    DownloadFile("http://static.spigotmc.org/git/PortableGit-2.5.0-32-bit.7z.exe", gitFile);
+                    DownloadFile((string)_json["git"]["32"], gitFile);
                 }
 
-                form.ProgressIndeterminate();
+                _form.ProgressIndeterminate();
                 using (Process extractProcess = new Process())
                 {
-                    form.AppendText("--- Extracting Portable Git");
-                    extractProcess.StartInfo.FileName = gitFile;
-                    extractProcess.StartInfo.UseShellExecute = true;
-                    extractProcess.StartInfo.Arguments = "-gm1 -nr -y";
-                    extractProcess.Start();
-                    extractProcess.WaitForExit();
+                    _form.AppendText("--- Extracting Portable Git");
+                    processes.Add(extractProcess);
+                    try
+                    {
+                        extractProcess.StartInfo.FileName = gitFile;
+                        extractProcess.StartInfo.UseShellExecute = true;
+                        extractProcess.StartInfo.Arguments = "-gm1 -nr -y";
+                        extractProcess.Start();
+                        extractProcess.WaitForExit();
+                        if (extractProcess.ExitCode != 0)
+                            throw new Exception();
+                    }
+                    catch (Exception)
+                    {
+                        _form.AppendText("--- There was a problem while extracting git");
+                        return;
+                    }
+                    finally
+                    {
+                        processes.Remove(extractProcess);
+                    }
                 }
                 Thread.Sleep(100);
                 File.Delete(gitFile);
 
                 if (CheckGit())
                 {
-                    form.AppendText("--- Portable Git Installed Successfully");
+                    _form.AppendText("--- Portable Git Installed Successfully");
                 }
                 else
                 {
-                    form.AppendText("--- Portable Git could not be installed, canceling");
+                    _form.AppendText("--- Portable Git could not be installed, canceling");
                     return;
                 }
             }
 
-            form.AppendText("\n--- Running BuildTools.jar\n");
+            _form.AppendText("\n--- Running BuildTools.jar\n");
             // Run Build Tools
             using (Process buildProcess = new Process())
             {
-                buildProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                buildProcess.StartInfo.CreateNoWindow = true;
-                buildProcess.StartInfo.FileName = gitDir + "/bin/bash.exe";
-                buildProcess.StartInfo.UseShellExecute = false;
-                buildProcess.StartInfo.RedirectStandardOutput = true;
-                buildProcess.StartInfo.RedirectStandardError = true;
-                buildProcess.StartInfo.Arguments = "--login -c \"java -jar " + fileName + "\"";
-                buildProcess.OutputDataReceived += (sender, args) => form.AppendText(args.Data);
-                buildProcess.ErrorDataReceived += (sender, args) => form.AppendText(args.Data);
-                buildProcess.Start();
-                buildProcess.BeginOutputReadLine();
-                buildProcess.BeginErrorReadLine();
-                buildProcess.WaitForExit();
+                processes.Add(buildProcess);
+                try
+                {
+                    buildProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    buildProcess.StartInfo.CreateNoWindow = true;
+                    buildProcess.StartInfo.FileName = gitDir + "/bin/bash.exe";
+                    buildProcess.StartInfo.UseShellExecute = false;
+                    buildProcess.StartInfo.RedirectStandardOutput = true;
+                    buildProcess.StartInfo.RedirectStandardError = true;
+                    buildProcess.StartInfo.Arguments =
+                        "--login -c \"git config --global --replace-all core.autocrlf true & java -jar " +
+                        (string) _json["buildTools"]["name"] + "\"";
+                    buildProcess.OutputDataReceived += (sender, args) => _form.AppendText(args.Data);
+                    buildProcess.ErrorDataReceived += (sender, args) => _form.AppendText(args.Data);
+                    buildProcess.Start();
+                    buildProcess.BeginOutputReadLine();
+                    buildProcess.BeginErrorReadLine();
+                    buildProcess.WaitForExit();
+                    if (buildProcess.ExitCode != 0)
+                        throw new Exception();
+                }
+                catch (Exception)
+                {
+                    _form.AppendText("--- There was an error while running BuildTools");
+                }
+                finally
+                {
+                    processes.Remove(buildProcess);
+                }
+                
             }
         }
 
@@ -299,6 +378,7 @@ namespace BuildTools
 
             using (Process process = new Process())
             {
+                processes.Add(process);
                 try
                 {
                     process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -309,10 +389,12 @@ namespace BuildTools
                     process.StartInfo.Arguments = "-version";
                     process.Start();
                     process.WaitForExit();
+                    processes.Remove(process);
                     return true;
                 }
                 catch (Exception)
                 {
+                    processes.Remove(process);
                     return false;
                 }
             }
@@ -328,6 +410,7 @@ namespace BuildTools
             {
                 using (Process process = new Process())
                 {
+                    processes.Add(process);
                     try
                     {
                         process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -339,12 +422,18 @@ namespace BuildTools
                         process.StartInfo.Arguments = "\"--login\" \"-i\" \"-c\" \"exit\"";
                         process.Start();
                         process.WaitForExit();
+                        if (process.ExitCode != 0)
+                            throw new Exception();
+
+                        processes.Remove(process);
                         return true;
                     }
                     catch (Exception)
                     {
+                        processes.Remove(process);
                         return false;
                     }
+                    
                 }
             }
 
@@ -355,17 +444,18 @@ namespace BuildTools
         {
             using (WebClient client = new WebClient())
             {
+                clients.Add(client);
                 client.DownloadProgressChanged += (sender, e) =>
                 {
                     double bytesIn = e.BytesReceived;
                     double totalBytes = e.TotalBytesToReceive;
                     if (totalBytes < 0)
                     {
-                        form.ProgressIndeterminate();
+                        _form.ProgressIndeterminate();
                     }
                     else
                     {
-                        form.Progress((int) bytesIn, (int) totalBytes);
+                        _form.Progress((int) bytesIn, (int) totalBytes);
                     }
                 };
                 client.DownloadFileAsync(new Uri(url), dest);
@@ -373,6 +463,21 @@ namespace BuildTools
                 {
                     Thread.Sleep(50);
                 }
+                clients.Remove(client);
+            }
+        }
+
+        public void CleanUp()
+        {
+            foreach (Process process in processes)
+            {
+                process.Kill();
+                process.Dispose();
+            }
+            foreach (WebClient client in clients)
+            {
+                client.CancelAsync();
+                client.Dispose();
             }
         }
     }

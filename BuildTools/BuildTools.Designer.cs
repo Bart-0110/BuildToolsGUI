@@ -76,11 +76,11 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.outputTB.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.outputTB.Location = new System.Drawing.Point(13, 43);
+            this.outputTB.Location = new System.Drawing.Point(0, 43);
             this.outputTB.Name = "outputTB";
             this.outputTB.ReadOnly = true;
             this.outputTB.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.ForcedBoth;
-            this.outputTB.Size = new System.Drawing.Size(609, 477);
+            this.outputTB.Size = new System.Drawing.Size(634, 477);
             this.outputTB.TabIndex = 3;
             this.outputTB.Text = "";
             this.outputTB.WordWrap = false;

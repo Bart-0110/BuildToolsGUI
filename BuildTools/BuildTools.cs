@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -80,7 +79,7 @@ namespace BuildTools
         // Clear Log Button Clicked
         private void clearBT_Click(object sender, EventArgs e)
         {
-            _lastLog = outputTB.Text;
+            _lastLog += outputTB.Text;
             outputTB.Text = "";
             undoBT.Visible = true;
         }
@@ -197,7 +196,9 @@ namespace BuildTools
 
         private void BuildTools_FormClosed(object sender, FormClosedEventArgs e)
         {
+            _runner.CleanUp();
             Application.Exit();
+            Environment.Exit(0);
         }
     }
 }
