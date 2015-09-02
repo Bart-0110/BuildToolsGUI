@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Windows.Forms;
 
 
@@ -20,28 +18,9 @@ namespace BuildTools
         [STAThread]
         private static void Main()
         {
-            bool createdNew = true;
-            using (Mutex mutex = new Mutex(true, "BuildTools", out createdNew))
-            {
-                if (createdNew)
-                {
-                    Application.EnableVisualStyles();
-                    Application.SetCompatibleTextRenderingDefault(false);
-                    Application.Run(new BuildTools());
-                }
-                else
-                {
-                    Process current = Process.GetCurrentProcess();
-                    foreach (Process process in Process.GetProcessesByName(current.ProcessName))
-                    {
-                        if (process.Id != current.Id)
-                        {
-                            SetForegroundWindow(process.MainWindowHandle);
-                            break;
-                        }
-                    }
-                }
-            }
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new BuildTools());
         }
     }
 }

@@ -10,6 +10,9 @@ namespace BuildTools
         private delegate void AppendTextDelegate(string text);
         private readonly AppendTextDelegate _appendDelegate;
 
+        private delegate void AppendRawTextDelegat(string text);
+        private readonly AppendRawTextDelegat _appendRawDelegate;
+
         private delegate void DisableDelegate();
         private readonly DisableDelegate _disableDelegate;
 
@@ -39,8 +42,9 @@ namespace BuildTools
             undoBT.Visible = false;
             progress.Visible = false;
 
-
+            // delegates
             _appendDelegate = AppendText;
+            _appendRawDelegate = AppendRawText;
             _disableDelegate = Disable;
             _enableDelegate = Enable;
             _showProgressDelegate = ProgressShow;
@@ -68,7 +72,7 @@ namespace BuildTools
         {
             Thread thread = new Thread(delegate()
             {
-                _runner.RunUpdate();
+                _runner.UpdateJar();
                 Enable();
                 ProgressHide();
             });
@@ -105,8 +109,20 @@ namespace BuildTools
             }
             else
             {
-                outputTB.AppendText(text + "\n");
+                outputTB.AppendText("--- " + text + "\n");
                 outputTB.ScrollToCaret();
+            }
+        }
+
+        public void AppendRawText(string text)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(_appendRawDelegate, text);
+            }
+            else
+            {
+                outputTB.AppendText(text + "\n");
             }
         }
 

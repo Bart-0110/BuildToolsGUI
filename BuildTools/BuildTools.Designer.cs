@@ -40,7 +40,7 @@
             // 
             // runBT
             // 
-            this.runBT.Location = new System.Drawing.Point(13, 13);
+            this.runBT.Location = new System.Drawing.Point(0, 11);
             this.runBT.Name = "runBT";
             this.runBT.Size = new System.Drawing.Size(107, 23);
             this.runBT.TabIndex = 0;
@@ -51,7 +51,7 @@
             // updateBT
             // 
             this.updateBT.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.updateBT.Location = new System.Drawing.Point(498, 13);
+            this.updateBT.Location = new System.Drawing.Point(510, 11);
             this.updateBT.Name = "updateBT";
             this.updateBT.Size = new System.Drawing.Size(124, 23);
             this.updateBT.TabIndex = 1;
@@ -63,7 +63,7 @@
             // 
             this.autoUpdateCB.Checked = true;
             this.autoUpdateCB.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.autoUpdateCB.Location = new System.Drawing.Point(126, 13);
+            this.autoUpdateCB.Location = new System.Drawing.Point(113, 11);
             this.autoUpdateCB.Name = "autoUpdateCB";
             this.autoUpdateCB.Size = new System.Drawing.Size(187, 24);
             this.autoUpdateCB.TabIndex = 2;
@@ -72,15 +72,15 @@
             // 
             // outputTB
             // 
-            this.outputTB.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
             this.outputTB.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.outputTB.Location = new System.Drawing.Point(0, 43);
+            this.outputTB.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.outputTB.ForeColor = System.Drawing.SystemColors.WindowText;
+            this.outputTB.Location = new System.Drawing.Point(0, 40);
+            this.outputTB.Margin = new System.Windows.Forms.Padding(0);
             this.outputTB.Name = "outputTB";
             this.outputTB.ReadOnly = true;
             this.outputTB.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.ForcedBoth;
-            this.outputTB.Size = new System.Drawing.Size(634, 477);
+            this.outputTB.Size = new System.Drawing.Size(633, 477);
             this.outputTB.TabIndex = 3;
             this.outputTB.Text = "";
             this.outputTB.WordWrap = false;
@@ -88,7 +88,7 @@
             // clearBT
             // 
             this.clearBT.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.clearBT.Location = new System.Drawing.Point(547, 526);
+            this.clearBT.Location = new System.Drawing.Point(559, 526);
             this.clearBT.Name = "clearBT";
             this.clearBT.Size = new System.Drawing.Size(75, 23);
             this.clearBT.TabIndex = 4;
@@ -99,7 +99,7 @@
             // undoBT
             // 
             this.undoBT.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.undoBT.Location = new System.Drawing.Point(466, 526);
+            this.undoBT.Location = new System.Drawing.Point(478, 526);
             this.undoBT.Name = "undoBT";
             this.undoBT.Size = new System.Drawing.Size(75, 23);
             this.undoBT.TabIndex = 5;
@@ -111,9 +111,9 @@
             // 
             this.progress.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.progress.Location = new System.Drawing.Point(13, 526);
+            this.progress.Location = new System.Drawing.Point(0, 526);
             this.progress.Name = "progress";
-            this.progress.Size = new System.Drawing.Size(447, 23);
+            this.progress.Size = new System.Drawing.Size(472, 23);
             this.progress.TabIndex = 6;
             // 
             // BuildTools
