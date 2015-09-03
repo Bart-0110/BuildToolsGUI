@@ -21,6 +21,8 @@ Explorer, and choose `Properties`. In the Properties windows, under `Advanced` c
 This will make Visual Studio embed these two libraries into the single `BuildTools.exe` so there are no DLL's to worry
 about.
 
+You will also need to add a reference to `System.Manager` for the UninstallJava project.
+
 Further Info
 ------------
 
