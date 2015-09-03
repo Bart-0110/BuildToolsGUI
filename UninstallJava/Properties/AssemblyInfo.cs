@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("BuildTools")]
-[assembly: AssemblyDescription("Windows GUI for the Spigot BuildTools")]
+[assembly: AssemblyTitle("UninstallJava")]
+[assembly: AssemblyDescription("Java Uninstaller for BuildTools Windows GUI by DemonWav")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("BuildTools")]
-[assembly: AssemblyCopyright("Copyright © Kyle Wood (DemonWav) 2015")]
+[assembly: AssemblyProduct("UninstallJava")]
+[assembly: AssemblyCopyright("Copyright ©  Kyle Wood (DemonWav) 2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("45b6e606-657d-4123-8b84-320f0fcc052c")]
+[assembly: Guid("5cb12816-7df6-4448-a914-7a083b2d655f")]
 
 // Version information for an assembly consists of the following four values:
 //

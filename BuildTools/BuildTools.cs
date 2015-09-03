@@ -123,6 +123,7 @@ namespace BuildTools
             else
             {
                 outputTB.AppendText(text + "\n");
+                outputTB.ScrollToCaret();
             }
         }
 

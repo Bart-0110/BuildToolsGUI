@@ -7,13 +7,16 @@ using System.Threading;
 using Ionic.Zip;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
+using System.Management;
+using System.Security.Permissions;
 
 namespace BuildTools
 {
     public class Runner
     {
+        private readonly string dir = "BuildTools\\";
         private readonly BuildTools _form;
-        private readonly string gitDir = "PortableGit";
+        private readonly string gitDir = "BuildTools/PortableGit";
         private JObject _api;
         private JObject _json;
 
@@ -36,7 +39,7 @@ namespace BuildTools
             {
                 return false;
             }
-            if (File.Exists((string) _json["buildTools"]["name"]))
+            if (File.Exists(dir + (string) _json["buildTools"]["name"]))
             {
                 int number = (int) _api["number"];
                 int currentBuildNumber;
@@ -135,7 +138,7 @@ namespace BuildTools
             _form.AppendText("Checking downloaded BuildTools");
             try
             {
-                using (ZipFile zip = ZipFile.Read((string) _json["buildTools"]["name"]))
+                using (ZipFile zip = ZipFile.Read(dir + (string) _json["buildTools"]["name"]))
                 {
                     ZipEntry entry = zip["META-INF/MANIFEST.MF"];
                     using (MemoryStream stream = new MemoryStream())
@@ -183,6 +186,10 @@ namespace BuildTools
         /// </summary>
         public bool UpdateJar()
         {
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
             _form.AppendText("Checking for update");
             _form.ProgressShow();
             _form.ProgressIndeterminate();
@@ -195,10 +202,10 @@ namespace BuildTools
                     return false;
                 }
 
-                if (File.Exists((string) _json["buildTools"]["name"]))
+                if (File.Exists(dir + (string) _json["buildTools"]["name"]))
                 {
                     _form.AppendText("Deleting current BuildTools");
-                    File.Delete((string) _json["buildTools"]["name"]);
+                    File.Delete(dir + (string) _json["buildTools"]["name"]);
                 }
 
                 string baseUrl = (string) _api["url"];
@@ -206,7 +213,7 @@ namespace BuildTools
                 string fullUrl = baseUrl + "artifact/" + relativePath;
 
                 _form.AppendText("Downloading BuildTools");
-                if (!DownloadFile(fullUrl, (string) _json["buildTools"]["name"]))
+                if (!DownloadFile(fullUrl, dir + (string) _json["buildTools"]["name"]))
                 {
                     _form.AppendText("BuildTools failed to download");
                     return false;
@@ -227,6 +234,15 @@ namespace BuildTools
         /// <param name="autoUpdate">If true, this will first call <see cref="RunUpdate()"/> Before continuing.</param>
         public void RunBuildTools(bool autoUpdate)
         {
+            if (!Environment.Is64BitOperatingSystem)
+            {
+                _form.AppendText("BuildTools does not reliably work on 32 bit systems, if you have problems please re-run this on a 64 bit system.");
+            }
+
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
             _form.ProgressShow();
             _form.ProgressIndeterminate();
             if (autoUpdate)
@@ -236,68 +252,97 @@ namespace BuildTools
             }
 
             // Java check
-            if (!CheckJava())
+            bool javaInstalled;
+            if (!CheckJava(out javaInstalled))
             {
-                string javaFile = (string) _json["json"]["name"];
-                _form.AppendText("Downloading Java istaller");
-                bool success;
-                if (Environment.Is64BitOperatingSystem)
+                string javaFile = dir + (string) _json["java"]["name"];
+                if (!javaInstalled)
                 {
-                    success = DownloadFile((string) _json["java"]["64"], javaFile);
-                }
-                else
-                {
-                    success = DownloadFile((string)_json["java"]["32"], javaFile);
-                }
-                if (!success)
-                {
-                    _form.AppendText("Java could not be downloaded, canceling");
-                    return;
-                }
-                
-                _form.ProgressIndeterminate();
-                using (Process installProcess = new Process())
-                {
-                    _form.AppendText("Running Java installer");
-                    disposables.Add(installProcess);
-                    try
-                    {
-                        installProcess.StartInfo.FileName = javaFile;
-                        installProcess.Start();
-                        installProcess.WaitForExit();
+                    // Java is not installed
+                    _form.AppendText("Downloading Java installer");
 
-                        if (installProcess.ExitCode != 0)
-                            throw new Exception();
+                    bool success = DownloadJava(javaFile);
+                    if (!success)
+                    {
+                        _form.AppendText("Java could not be downloaded, canceling");
                     }
-                    catch (Exception)
+
+                    _form.ProgressIndeterminate();
+                    success = InstallJava(javaFile);
+                    if (!success)
+                    {
+                        _form.AppendText("Java could not be installed, canceling");
+                    }
+
+                    if (CheckJava())
+                    {
+                        _form.AppendText("Java installed successfully");
+                    }
+                    else
                     {
                         _form.AppendText("Java could not be installed, canceling");
                         return;
                     }
-                    finally
-                    {
-                        disposables.Remove(installProcess);
-                    }
-                    
-                }
-                Thread.Sleep(100);
-                File.Delete(javaFile);
-
-                if (CheckJava())
-                {
-                    _form.AppendText("Java installed successfully");
                 }
                 else
                 {
-                    _form.AppendText("Java could not be installed, canceling");
-                    return;
+                    // Java is installed
+                    _form.AppendText("This is a 64 bit operating system, but the 32 bit JRE is installed. Downloading 64 bit JRE");
+                    bool success = DownloadJava(javaFile);
+                    if (!success)
+                    {
+                        _form.AppendText("Unable to download the 64 bit Java installer, will continue with the 32 bit JRE. This may cause the build to fail");
+                    }
+                    else
+                    {
+                        _form.AppendText("Uninstalling current 32 bit JRE");
+                        success = UninstallJava();
+                        if (!success)
+                        {
+                            _form.AppendText("There was an error while attempting to uninstall the 32 bit JRE");
+                            CheckJava(out javaInstalled);
+                            if (javaInstalled)
+                            {
+                                _form.AppendText("Java still seems to be installed, though. Will continue with the 32 bit JRE. This may cause the build to fail");
+                            }
+                            else
+                            {
+                                _form.AppendText("In spite of the error, it seems Java has been uninstalled. Will now install the 64 bit JRE");
+                                success = InstallJava(javaFile);
+                                if (!success)
+                                {
+                                    _form.AppendText("Java failed to install, canceling");
+                                    return;
+                                }
+                                if (!FullJavaCheck())
+                                {
+                                    return;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            _form.AppendText("Installing the 64 bit JRE");
+                            success = InstallJava(javaFile);
+                            if (!success)
+                            {
+                                _form.AppendText("Java failed to install, canceling");
+                                return;
+                            }
+                            if (!FullJavaCheck())
+                            {
+                                return;
+                            }
+                        }
+                    }
+
                 }
             }
 
             // Git check
             if (!CheckGit())
             {
-                string gitFile = "portable_git.7z.exe";
+                string gitFile = dir + "portable_git.7z.exe";
                 _form.AppendText("Downloading portable Git");
 
                 bool success;
@@ -369,6 +414,7 @@ namespace BuildTools
                     buildProcess.StartInfo.UseShellExecute = false;
                     buildProcess.StartInfo.RedirectStandardOutput = true;
                     buildProcess.StartInfo.RedirectStandardError = true;
+                    buildProcess.StartInfo.WorkingDirectory = Path.GetFullPath(dir);
                     buildProcess.StartInfo.Arguments =
                         "--login -c \"git config --global --replace-all core.autocrlf true & java -jar " +
                         (string) _json["buildTools"]["name"] + "\"";
@@ -393,11 +439,57 @@ namespace BuildTools
             }
         }
 
+        private bool UninstallJava()
+        {
+            string file = dir + (string) _json["java"]["uninstaller"]["name"];
+            // We can't elevate the priviledges of this process to uninstall java, so create a new process to do so
+            bool success = DownloadFile((string) _json["java"]["uninstaller"]["url"], file);
+            _form.ProgressIndeterminate();
+            if (!success)
+            {
+                return false;
+            }
+
+            using (Process process = new Process())
+            {
+                disposables.Add(process);
+                try
+                {
+                    process.StartInfo.FileName = file;
+                    process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.Start();
+                    process.WaitForExit();
+
+                    if (process.ExitCode != 0)
+                        throw new Exception();
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+                finally
+                {
+                    disposables.Remove(process);
+                }
+
+            }
+            Thread.Sleep(100);
+            File.Delete(file);
+            return true;
+        }
+
+        private bool CheckJava()
+        {
+            bool what;
+            return CheckJava(out what);
+        }
+
         /// <summary>
         /// 
         /// </summary>
         /// <returns>True if Java is installed correctly</returns>
-        private bool CheckJava()
+        private bool CheckJava(out bool javaInstalled)
         {
             string path = (string) Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment", "Path", "");
             Environment.SetEnvironmentVariable("Path", path, EnvironmentVariableTarget.Process);
@@ -411,19 +503,103 @@ namespace BuildTools
                     process.StartInfo.CreateNoWindow = true;
                     process.StartInfo.FileName = "java";
                     process.StartInfo.UseShellExecute = false;
-
                     process.StartInfo.Arguments = "-version";
                     process.Start();
                     process.WaitForExit();
-                    disposables.Remove(process);
-                    return true;
+
+                    javaInstalled = true;
+
+                    // Make sure a 64 bit JVM is installed on a 64 bit system
+                    if (Environment.Is64BitOperatingSystem)
+                    {
+                        process.StartInfo.Arguments = "-d64 -version";
+                        process.Start();
+                        process.WaitForExit();
+
+                        if (process.ExitCode == 0)
+                        {
+                            return true;
+                        }
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
                 }
                 catch (Exception)
                 {
-                    disposables.Remove(process);
+                    javaInstalled = false;
                     return false;
                 }
+                finally
+                {
+                    disposables.Remove(process);
+                }
             }
+        }
+
+        private bool DownloadJava(string javaFile)
+        {
+            bool success;
+            if (Environment.Is64BitOperatingSystem)
+            {
+                success = DownloadFile((string)_json["java"]["64"], javaFile);
+            }
+            else
+            {
+                success = DownloadFile((string)_json["java"]["32"], javaFile);
+            }
+            return success;
+        }
+
+        private bool InstallJava(string javaFile)
+        {
+            using (Process installProcess = new Process())
+            {
+                _form.AppendText("Running Java installer");
+                disposables.Add(installProcess);
+                try
+                {
+                    installProcess.StartInfo.FileName = javaFile;
+                    installProcess.Start();
+                    installProcess.WaitForExit();
+
+                    if (installProcess.ExitCode != 0)
+                        throw new Exception();
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+                finally
+                {
+                    disposables.Remove(installProcess);
+                }
+
+            }
+            Thread.Sleep(100);
+            File.Delete(javaFile);
+            return true;
+        }
+
+        private bool FullJavaCheck()
+        {
+            bool javaInstalled;
+            bool correct = CheckJava(out javaInstalled);
+            if (correct)
+            {
+                _form.AppendText("Java installed successfully");
+                return true;
+            }
+            if (javaInstalled)
+            {
+                _form.AppendText("Java was installed, but it is still 32 bit for some reason.");
+                _form.AppendText("Will continue with the 32 bit JRE. This may cause the build to fail");
+                return true;
+            }
+            _form.AppendText("Java failed to install, canceling");
+            return false;
         }
 
         /// <summary>
@@ -509,6 +685,16 @@ namespace BuildTools
         {
             foreach (IDisposable disposable in disposables)
             {
+                if (disposable is Process)
+                {
+                    Process process = (Process) disposable;
+                    process.Kill();
+                }
+                else if (disposable is WebClient)
+                {
+                    WebClient client = (WebClient) disposable;
+                    client.CancelAsync();
+                }
                 disposable.Dispose();
             }
         }
