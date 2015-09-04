@@ -7,21 +7,45 @@ using System.Threading;
 using Ionic.Zip;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
-using System.Management;
-using System.Security.Permissions;
+
 
 namespace BuildTools
 {
+    /// <summary>
+    /// General worker class
+    /// </summary>
     public class Runner
     {
+        /// <summary>
+        /// Output directory for all files
+        /// </summary>
         private readonly string dir = "BuildTools\\";
+        /// <summary>
+        /// GUI part of the program
+        /// </summary>
         private readonly BuildTools _form;
+        /// <summary>
+        /// Final directory for the portable Git extract
+        /// </summary>
         private readonly string gitDir = "BuildTools/PortableGit";
+        /// <summary>
+        /// Json response for the Jenkins api
+        /// </summary>
         private JObject _api;
+        /// <summary>
+        /// Json response from my server
+        /// </summary>
         private JObject _json;
+        /// <summary>
+        /// Keep track of current work here, so cleanup can remove them when needed
+        /// </summary>
+        private readonly HashSet<IDisposable> _disposables = new HashSet<IDisposable>();
 
-        private readonly List<IDisposable> disposables = new List<IDisposable>();
 
+        /// <summary>
+        /// Constructor for the worker class
+        /// </summary>
+        /// <param name="form">The GUI</param>
         public Runner(BuildTools form)
         {
             _form = form;
@@ -62,8 +86,9 @@ namespace BuildTools
         }
 
         /// <summary>
-        /// Get the JSON response from the jenkins server and save it as a JObject.
+        /// Get the JSON response from my server and Jenkins and save them as JObject's.
         /// </summary>
+        /// <returns>True if the JSON responses were parsed successfully.</returns>
         private bool GetJson()
         {
             if (_json == null)
@@ -91,6 +116,11 @@ namespace BuildTools
             return true;
         }
 
+        /// <summary>
+        /// Given a URL, retrieve the JSON response from that URL and return it as a JObject
+        /// </summary>
+        /// <param name="url">URL to get JSON response from</param>
+        /// <returns>JObject formed by the parsed JSON</returns>
         private JObject DownloadJson(string url)
         {
             WebRequest request = WebRequest.Create(url);
@@ -98,7 +128,7 @@ namespace BuildTools
             {
                 try
                 {
-                    disposables.Add(stream);
+                    _disposables.Add(stream);
                     if (stream != null)
                     {
                         StreamReader reader = new StreamReader(stream);
@@ -120,7 +150,7 @@ namespace BuildTools
                 }
                 finally
                 {
-                    disposables.Remove(stream);
+                    _disposables.Remove(stream);
                 }
                 
             }
@@ -182,8 +212,9 @@ namespace BuildTools
         }
 
         /// <summary>
-        /// Download a new copy of BuildTools.jar
+        /// Download a new copy of the BuildTools jar
         /// </summary>
+        /// <returns>True if the update was successful</returns>
         public bool UpdateJar()
         {
             if (!Directory.Exists(dir))
@@ -229,9 +260,9 @@ namespace BuildTools
 
         /// <summary>
         /// Goes through the process of checking the BuildTools environment and running it. If autoUpate is
-        /// true, it will first call <see cref="RunUpdate()"/>.
+        /// true, it will first call <see cref="UpdateJar()"/>.
         /// </summary>
-        /// <param name="autoUpdate">If true, this will first call <see cref="RunUpdate()"/> Before continuing.</param>
+        /// <param name="autoUpdate">If true, this will first call <see cref="UpdateJar()"/> Before continuing.</param>
         public void RunBuildTools(bool autoUpdate)
         {
             if (!Environment.Is64BitOperatingSystem)
@@ -364,7 +395,7 @@ namespace BuildTools
                 using (Process extractProcess = new Process())
                 {
                     _form.AppendText("Extracting portable Git");
-                    disposables.Add(extractProcess);
+                    _disposables.Add(extractProcess);
                     try
                     {
                         extractProcess.StartInfo.FileName = gitFile;
@@ -382,7 +413,7 @@ namespace BuildTools
                     }
                     finally
                     {
-                        disposables.Remove(extractProcess);
+                        _disposables.Remove(extractProcess);
                     }
                 }
                 Thread.Sleep(100);
@@ -405,7 +436,7 @@ namespace BuildTools
             // Run Build Tools
             using (Process buildProcess = new Process())
             {
-                disposables.Add(buildProcess);
+                _disposables.Add(buildProcess);
                 try
                 {
                     buildProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -433,12 +464,21 @@ namespace BuildTools
                 }
                 finally
                 {
-                    disposables.Remove(buildProcess);
+                    _disposables.Remove(buildProcess);
                 }
                 
             }
         }
+        //******************//
+        //** Java methods **//
+        //******************//
 
+        /// <summary>
+        /// Download the program that will uninstall Java from this system and run it.
+        /// We use a separate program for this because uninstalling requires the program to be
+        /// run under an administrator, and we can't change the priviledge level of the current running process.
+        /// </summary>
+        /// <returns>True if Java was successfully uninstalled</returns>
         private bool UninstallJava()
         {
             string file = dir + (string) _json["java"]["uninstaller"]["name"];
@@ -452,7 +492,7 @@ namespace BuildTools
 
             using (Process process = new Process())
             {
-                disposables.Add(process);
+                _disposables.Add(process);
                 try
                 {
                     process.StartInfo.FileName = file;
@@ -470,7 +510,7 @@ namespace BuildTools
                 }
                 finally
                 {
-                    disposables.Remove(process);
+                    _disposables.Remove(process);
                 }
 
             }
@@ -486,9 +526,11 @@ namespace BuildTools
         }
 
         /// <summary>
-        /// 
+        /// Checks if Java is installed on this system, and if it's installed correctly. The only time it could be installed but not installed
+        /// correctly is if this is run on a 64 bit machine, but the JRE installed is 32 bit.
         /// </summary>
-        /// <returns>True if Java is installed correctly</returns>
+        /// <param name="javaInstalled">Returns true if Java is installed at all, regardless of the system architecture.</param>
+        /// <returns>True if Java is correctly installed</returns>
         private bool CheckJava(out bool javaInstalled)
         {
             string path = (string) Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment", "Path", "");
@@ -496,7 +538,7 @@ namespace BuildTools
 
             using (Process process = new Process())
             {
-                disposables.Add(process);
+                _disposables.Add(process);
                 try
                 {
                     process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -534,11 +576,16 @@ namespace BuildTools
                 }
                 finally
                 {
-                    disposables.Remove(process);
+                    _disposables.Remove(process);
                 }
             }
         }
 
+        /// <summary>
+        /// Given the output file, download Java using the data from my server.
+        /// </summary>
+        /// <param name="javaFile">The output file name to download to.</param>
+        /// <returns>True if Java was downloaded correctly</returns>
         private bool DownloadJava(string javaFile)
         {
             bool success;
@@ -553,12 +600,18 @@ namespace BuildTools
             return success;
         }
 
+        /// <summary>
+        /// Installs Java by running the given file. This will delete the given file after the
+        /// installation has completed.
+        /// </summary>
+        /// <param name="javaFile">The file to run</param>
+        /// <returns>True if Java was installed correctly</returns>
         private bool InstallJava(string javaFile)
         {
             using (Process installProcess = new Process())
             {
                 _form.AppendText("Running Java installer");
-                disposables.Add(installProcess);
+                _disposables.Add(installProcess);
                 try
                 {
                     installProcess.StartInfo.FileName = javaFile;
@@ -574,7 +627,7 @@ namespace BuildTools
                 }
                 finally
                 {
-                    disposables.Remove(installProcess);
+                    _disposables.Remove(installProcess);
                 }
 
             }
@@ -583,6 +636,12 @@ namespace BuildTools
             return true;
         }
 
+        /// <summary>
+        /// Check if Java is installed. It will return true if Java is installed at all. It will only return false if Java is not installed.
+        /// However, it will inform the user if Java is not installed correctly. This method is for one last check after every effort has
+        /// been made to correct the Java issue.
+        /// </summary>
+        /// <returns>True if Java is not installed</returns>
         private bool FullJavaCheck()
         {
             bool javaInstalled;
@@ -603,16 +662,16 @@ namespace BuildTools
         }
 
         /// <summary>
-        /// 
+        /// Checks if portable Git is installed correctly.
         /// </summary>
-        /// <returns>True if portable git is installed correctly</returns>
+        /// <returns>True if portable Git is installed correctly</returns>
         private bool CheckGit()
         {
             if (Directory.Exists(gitDir))
             {
                 using (Process process = new Process())
                 {
-                    disposables.Add(process);
+                    _disposables.Add(process);
                     try
                     {
                         process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -627,12 +686,12 @@ namespace BuildTools
                         if (process.ExitCode != 0)
                             throw new Exception();
 
-                        disposables.Remove(process);
+                        _disposables.Remove(process);
                         return true;
                     }
                     catch (Exception)
                     {
-                        disposables.Remove(process);
+                        _disposables.Remove(process);
                         return false;
                     }
                     
@@ -642,11 +701,19 @@ namespace BuildTools
             return false;
         }
 
+        /// <summary>
+        /// Given a URL, download the file from that URL to a destination file. Returns whether the download
+        /// was successful. This automatically adds the download to the list of disposables, and removes it
+        /// when the download is completed.
+        /// </summary>
+        /// <param name="url">The URL to download the file from</param>
+        /// <param name="dest">The relative or absolute path to the destination file to be saved</param>
+        /// <returns>True if the download is successful</returns>
         private bool DownloadFile(string url, string dest)
         {
             using (WebClient client = new WebClient())
             {
-                disposables.Add(client);
+                _disposables.Add(client);
                 try
                 {
                     client.DownloadProgressChanged += (sender, e) =>
@@ -675,15 +742,19 @@ namespace BuildTools
                 }
                 finally
                 {
-                    disposables.Remove(client);
+                    _disposables.Remove(client);
                 }
             }
             return true;
         }
 
+        /// <summary>
+        /// If the application is closed, this will be run before exit. This will go through the list of any current
+        /// work that may be running, and it will stop and dispose of them.
+        /// </summary>
         public void CleanUp()
         {
-            foreach (IDisposable disposable in disposables)
+            foreach (IDisposable disposable in _disposables)
             {
                 if (disposable is Process)
                 {

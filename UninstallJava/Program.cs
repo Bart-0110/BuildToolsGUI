@@ -3,8 +3,17 @@ using System.Management;
 
 namespace UninstallJava
 {
+    /// <summary>
+    /// Runner class for uninstalling Java.
+    /// </summary>
     public class Program
     {
+        /// <summary>
+        /// Takes no arguments, when this program is run it will search for Java installed on the machine and
+        /// run the uninstallation program for it. It will exit 0 if the uninstallation was successful, and 1
+        /// if the uninstallation was unsuccessful or it did not find Java to uninstall.
+        /// </summary>
+        /// <param name="args"></param>
         public static void Main(string[] args)
         {
             try

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
 
-
-
 namespace BuildTools
 {
     static class Program

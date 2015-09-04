@@ -35,6 +35,9 @@ namespace BuildTools
         private readonly Runner _runner;
         private string _lastLog = "";
 
+        /// <summary>
+        /// Constructor for the form
+        /// </summary>
         public BuildTools()
         {
             InitializeComponent();
@@ -98,7 +101,7 @@ namespace BuildTools
 
         /// <summary>
         /// Append text to the output textbox. This method will ensure thread safety on the AppendText method call.
-        /// This will also automatically append the given text with a new-line character.
+        /// This will also prefix a "--- " before the given text and automatically append the given text with a new-line character.
         /// </summary>
         /// <param name="text">Text to append to the output textbox.</param>
         public void AppendText(string text)
@@ -114,6 +117,10 @@ namespace BuildTools
             }
         }
 
+        /// <summary>
+        /// Send one line of text to the output textbox, with no "---" prefix. A newline will be added to the end of the line.
+        /// </summary>
+        /// <param name="text">Text to append to the output textbox.</param>
         public void AppendRawText(string text)
         {
             if (InvokeRequired)
@@ -127,7 +134,9 @@ namespace BuildTools
             }
         }
 
-        // Disable
+        /// <summary>
+        /// Disable the run buttons so they can't be pressed while work is being done.
+        /// </summary>
         private void Disable()
         {
             if (InvokeRequired)
@@ -142,7 +151,9 @@ namespace BuildTools
             
         }
 
-        // Enable
+        /// <summary>
+        /// Enable the run buttons so they will work after work has completed
+        /// </summary>
         private void Enable()
         {
             if (InvokeRequired)
@@ -156,7 +167,10 @@ namespace BuildTools
             }
         }
 
-        // Progress Show
+        /// <summary>
+        /// Show the progress bar.
+        /// This needs to be done before other calls are made to it.
+        /// </summary>
         public void ProgressShow()
         {
             if (InvokeRequired)
@@ -169,7 +183,9 @@ namespace BuildTools
             }
         }
 
-        // Progress Hide
+        /// <summary>
+        /// Hide the progress bar so it won't be visible
+        /// </summary>
         public void ProgressHide()
         {
             if (InvokeRequired)
@@ -182,7 +198,9 @@ namespace BuildTools
             }
         }
 
-        // Progress indeterminate
+        /// <summary>
+        /// Set the progress bar's state to indeterminate.
+        /// </summary>
         public void ProgressIndeterminate()
         {
             if (InvokeRequired)
@@ -195,7 +213,11 @@ namespace BuildTools
             }
         }
 
-        // Progress percent
+        /// <summary>
+        /// Set the progress bar to the specified place.
+        /// </summary>
+        /// <param name="place">Current progress to this point</param>
+        /// <param name="total">Total progress to completion</param>
         public void Progress(int place, int total)
         {
             if (InvokeRequired)
@@ -211,11 +233,18 @@ namespace BuildTools
             }
         }
 
+        // Exit button pressed
         private void BuildTools_FormClosed(object sender, FormClosedEventArgs e)
         {
             _runner.CleanUp();
             Application.Exit();
             Environment.Exit(0);
+        }
+
+        // Source link clicked
+        private void linkLabel_Click(object sender, EventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://github.com/DemonWav/BuildToolsGUI");
         }
     }
 }

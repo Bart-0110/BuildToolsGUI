@@ -36,6 +36,7 @@
             this.clearBT = new System.Windows.Forms.Button();
             this.undoBT = new System.Windows.Forms.Button();
             this.progress = new System.Windows.Forms.ProgressBar();
+            this.linkLabel = new System.Windows.Forms.LinkLabel();
             this.SuspendLayout();
             // 
             // runBT
@@ -119,11 +120,27 @@
             this.progress.Size = new System.Drawing.Size(472, 23);
             this.progress.TabIndex = 6;
             // 
+            // linkLabel
+            // 
+            this.linkLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.linkLabel.AutoSize = true;
+            this.linkLabel.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
+            this.linkLabel.LinkColor = System.Drawing.Color.Blue;
+            this.linkLabel.Location = new System.Drawing.Point(423, 16);
+            this.linkLabel.Name = "linkLabel";
+            this.linkLabel.Size = new System.Drawing.Size(67, 13);
+            this.linkLabel.TabIndex = 7;
+            this.linkLabel.TabStop = true;
+            this.linkLabel.Text = "View Source";
+            this.linkLabel.VisitedLinkColor = System.Drawing.Color.Blue;
+            this.linkLabel.Click += new System.EventHandler(this.linkLabel_Click);
+            // 
             // BuildTools
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(634, 561);
+            this.Controls.Add(this.linkLabel);
             this.Controls.Add(this.progress);
             this.Controls.Add(this.undoBT);
             this.Controls.Add(this.clearBT);
@@ -137,6 +154,7 @@
             this.Text = "BuildTools";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.BuildTools_FormClosed);
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -149,6 +167,7 @@
         private System.Windows.Forms.Button clearBT;
         private System.Windows.Forms.Button undoBT;
         private System.Windows.Forms.ProgressBar progress;
+        private System.Windows.Forms.LinkLabel linkLabel;
     }
 }
 
