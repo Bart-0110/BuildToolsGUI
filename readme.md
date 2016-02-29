@@ -1,4 +1,4 @@
-BuildTools Windows GUI <a href="https://tc.demonwav.com/viewType.html?buildTypeId=BuildToolsGUI_Build&guest=1"><img src="https://tc.demonwav.com/app/rest/builds/buildType(id:BuildToolsGUI_Build)/statusIcon"/></a>
+BuildTools Windows GUI
 ======================
 
 The goal for this is, when it's finished, to be an easy to use, self-contained BuildTools GUI for Windows. It will
