@@ -1,34 +1,42 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 
 namespace BuildTools
 {
-    public partial class BuildTools : Form
-    {
+    public partial class BuildTools : Form {
         // Delegates
         private delegate void AppendTextDelegate(string text);
+
         private readonly AppendTextDelegate _appendDelegate;
 
         private delegate void AppendRawTextDelegat(string text);
+
         private readonly AppendRawTextDelegat _appendRawDelegate;
 
         private delegate void DisableDelegate();
+
         private readonly DisableDelegate _disableDelegate;
 
         private delegate void EnableDelegate();
+
         private readonly EnableDelegate _enableDelegate;
 
         private delegate void ShowProgressDelegate();
+
         private readonly ShowProgressDelegate _showProgressDelegate;
 
         private delegate void HideProgressDelegate();
+
         private readonly HideProgressDelegate _hideProgressDelegate;
 
         private delegate void IndeterminateProgressDelegate();
+
         private readonly IndeterminateProgressDelegate _indeterminateProgressDelegate;
 
         private delegate void ProgressPercentDelegate(int place, int total);
+
         private readonly ProgressPercentDelegate _progressPercentDelegate;
 
         // Stuff
@@ -38,8 +46,7 @@ namespace BuildTools
         /// <summary>
         /// Constructor for the form
         /// </summary>
-        public BuildTools()
-        {
+        public BuildTools() {
             InitializeComponent();
             _runner = new Runner(this);
             undoBT.Visible = false;
@@ -57,11 +64,9 @@ namespace BuildTools
         }
 
         // Run BuildTools Button Clicked
-        private void runBT_Click(object sender, EventArgs e)
-        {
+        private void runBT_Click(object sender, EventArgs e) {
             bool update = autoUpdateCB.Checked;
-            Thread thread = new Thread(delegate()
-            {
+            Thread thread = new Thread(delegate() {
                 _runner.RunBuildTools(update);
                 Enable();
                 ProgressHide();
@@ -71,10 +76,8 @@ namespace BuildTools
         }
 
         // Update BuildTools Button Clicked
-        private void updateBT_Click(object sender, EventArgs e)
-        {
-            Thread thread = new Thread(delegate()
-            {
+        private void updateBT_Click(object sender, EventArgs e) {
+            Thread thread = new Thread(delegate() {
                 _runner.UpdateJar();
                 Enable();
                 ProgressHide();
@@ -84,16 +87,14 @@ namespace BuildTools
         }
 
         // Clear Log Button Clicked
-        private void clearBT_Click(object sender, EventArgs e)
-        {
+        private void clearBT_Click(object sender, EventArgs e) {
             _lastLog += outputTB.Text;
             outputTB.Text = "";
             undoBT.Visible = true;
         }
 
         // Undo Button Clicked
-        private void undoBT_Click(object sender, EventArgs e)
-        {
+        private void undoBT_Click(object sender, EventArgs e) {
             outputTB.Text = _lastLog + outputTB.Text;
             _lastLog = "";
             undoBT.Visible = false;
@@ -104,14 +105,11 @@ namespace BuildTools
         /// This will also prefix a "--- " before the given text and automatically append the given text with a new-line character.
         /// </summary>
         /// <param name="text">Text to append to the output textbox.</param>
-        public void AppendText(string text)
-        {
-            if (InvokeRequired)
-            {
+        public void AppendText(string text) {
+            if (InvokeRequired) {
                 Invoke(_appendDelegate, text);
             }
-            else
-            {
+            else {
                 outputTB.AppendText("--- " + text + "\n");
                 outputTB.ScrollToCaret();
             }
@@ -121,14 +119,11 @@ namespace BuildTools
         /// Send one line of text to the output textbox, with no "---" prefix. A newline will be added to the end of the line.
         /// </summary>
         /// <param name="text">Text to append to the output textbox.</param>
-        public void AppendRawText(string text)
-        {
-            if (InvokeRequired)
-            {
+        public void AppendRawText(string text) {
+            if (InvokeRequired) {
                 Invoke(_appendRawDelegate, text);
             }
-            else
-            {
+            else {
                 outputTB.AppendText(text + "\n");
                 outputTB.ScrollToCaret();
             }
@@ -137,31 +132,25 @@ namespace BuildTools
         /// <summary>
         /// Disable the run buttons so they can't be pressed while work is being done.
         /// </summary>
-        private void Disable()
-        {
-            if (InvokeRequired)
-            {
+        private void Disable() {
+            if (InvokeRequired) {
                 Invoke(_disableDelegate);
             }
-            else
-            {
+            else {
                 updateBT.Enabled = false;
                 runBT.Enabled = false;
             }
-            
+
         }
 
         /// <summary>
         /// Enable the run buttons so they will work after work has completed
         /// </summary>
-        private void Enable()
-        {
-            if (InvokeRequired)
-            {
+        private void Enable() {
+            if (InvokeRequired) {
                 Invoke(_enableDelegate);
             }
-            else
-            {
+            else {
                 updateBT.Enabled = true;
                 runBT.Enabled = true;
             }
@@ -171,14 +160,11 @@ namespace BuildTools
         /// Show the progress bar.
         /// This needs to be done before other calls are made to it.
         /// </summary>
-        public void ProgressShow()
-        {
-            if (InvokeRequired)
-            {
+        public void ProgressShow() {
+            if (InvokeRequired) {
                 Invoke(_showProgressDelegate);
             }
-            else
-            {
+            else {
                 progress.Visible = true;
             }
         }
@@ -186,14 +172,11 @@ namespace BuildTools
         /// <summary>
         /// Hide the progress bar so it won't be visible
         /// </summary>
-        public void ProgressHide()
-        {
-            if (InvokeRequired)
-            {
+        public void ProgressHide() {
+            if (InvokeRequired) {
                 Invoke(_hideProgressDelegate);
             }
-            else
-            {
+            else {
                 progress.Visible = false;
             }
         }
@@ -201,14 +184,11 @@ namespace BuildTools
         /// <summary>
         /// Set the progress bar's state to indeterminate.
         /// </summary>
-        public void ProgressIndeterminate()
-        {
-            if (InvokeRequired)
-            {
+        public void ProgressIndeterminate() {
+            if (InvokeRequired) {
                 Invoke(_indeterminateProgressDelegate);
             }
-            else
-            {
+            else {
                 progress.Style = ProgressBarStyle.Marquee;
             }
         }
@@ -218,14 +198,11 @@ namespace BuildTools
         /// </summary>
         /// <param name="place">Current progress to this point</param>
         /// <param name="total">Total progress to completion</param>
-        public void Progress(int place, int total)
-        {
-            if (InvokeRequired)
-            {
+        public void Progress(int place, int total) {
+            if (InvokeRequired) {
                 Invoke(_progressPercentDelegate, place, total);
             }
-            else
-            {
+            else {
                 progress.Style = ProgressBarStyle.Continuous;
                 progress.Minimum = 0;
                 progress.Maximum = total;
@@ -234,17 +211,10 @@ namespace BuildTools
         }
 
         // Exit button pressed
-        private void BuildTools_FormClosed(object sender, FormClosedEventArgs e)
-        {
+        private void BuildTools_FormClosed(object sender, FormClosedEventArgs e) {
             _runner.CleanUp();
             Application.Exit();
             Environment.Exit(0);
-        }
-
-        // Source link clicked
-        private void linkLabel_Click(object sender, EventArgs e)
-        {
-            System.Diagnostics.Process.Start("https://github.com/DemonWav/BuildToolsGUI");
         }
     }
 }

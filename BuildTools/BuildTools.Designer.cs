@@ -126,14 +126,13 @@
             this.linkLabel.AutoSize = true;
             this.linkLabel.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
             this.linkLabel.LinkColor = System.Drawing.Color.Blue;
-            this.linkLabel.Location = new System.Drawing.Point(423, 16);
+            this.linkLabel.Location = new System.Drawing.Point(306, 16);
             this.linkLabel.Name = "linkLabel";
             this.linkLabel.Size = new System.Drawing.Size(67, 13);
             this.linkLabel.TabIndex = 7;
             this.linkLabel.TabStop = true;
             this.linkLabel.Text = "View Source";
             this.linkLabel.VisitedLinkColor = System.Drawing.Color.Blue;
-            this.linkLabel.Click += new System.EventHandler(this.linkLabel_Click);
             // 
             // BuildTools
             // 

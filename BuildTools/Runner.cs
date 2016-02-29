@@ -19,7 +19,7 @@ namespace BuildTools
         /// <summary>
         /// Output directory for all files
         /// </summary>
-        private readonly string dir = "BuildTools\\";
+        public static readonly string dir = "BuildTools\\";
         /// <summary>
         /// GUI part of the program
         /// </summary>
@@ -95,7 +95,7 @@ namespace BuildTools
             {
                 _form.AppendText("Retrieving information from the server");
 
-                _json = DownloadJson("http://demonwav.com/buildtools.json");
+                _json = DownloadJson("https://www.demonwav.com/buildtools.json");
 
                 if (_json == null)
                 {
@@ -123,38 +123,46 @@ namespace BuildTools
         /// <returns>JObject formed by the parsed JSON</returns>
         private JObject DownloadJson(string url)
         {
-            WebRequest request = WebRequest.Create(url);
-            using (Stream stream = request.GetResponse().GetResponseStream())
+            try
             {
-                try
+                WebRequest request = WebRequest.Create(url);
+                using (Stream stream = request.GetResponse().GetResponseStream())
                 {
-                    _disposables.Add(stream);
-                    if (stream != null)
+                    try
                     {
-                        StreamReader reader = new StreamReader(stream);
-
-                        string line;
-                        string finalOutput = "";
-                        while ((line = reader.ReadLine()) != null)
+                        _disposables.Add(stream);
+                        if (stream != null)
                         {
-                            finalOutput += line + "\n";
-                        }
+                            StreamReader reader = new StreamReader(stream);
 
-                        return JObject.Parse(finalOutput);
+                            string line;
+                            string finalOutput = "";
+                            while ((line = reader.ReadLine()) != null)
+                            {
+                                finalOutput += line + "\n";
+                            }
+
+                            return JObject.Parse(finalOutput);
+                        }
                     }
-                }
-                catch (Exception)
-                {
-                    _form.AppendText("There was an error while trying to receive data from the server");
-                    return null;
-                }
-                finally
-                {
-                    _disposables.Remove(stream);
-                }
+                    catch (Exception)
+                    {
+                        _form.AppendText("There was an error while trying to receive data from the server");
+                        return null;
+                    }
+                    finally
+                    {
+                        _disposables.Remove(stream);
+                    }
                 
+                }
+                return null;
             }
-            return null;
+            catch (Exception)
+            {
+                _form.AppendText("There was an error while trying to receive data from the server");
+                return null;
+            }
         }
 
         /// <summary>
@@ -448,7 +456,7 @@ namespace BuildTools
                     buildProcess.StartInfo.WorkingDirectory = Path.GetFullPath(dir);
                     buildProcess.StartInfo.Arguments =
                         "--login -c \"git config --global --replace-all core.autocrlf true & java -jar " +
-                        (string) _json["buildTools"]["name"] + "\"";
+                        (string)_json["buildTools"]["name"] + " --rev 1.9\"";
                     buildProcess.OutputDataReceived += (sender, args) => _form.AppendRawText(args.Data);
                     buildProcess.ErrorDataReceived += (sender, args) => _form.AppendRawText(args.Data);
                     buildProcess.Start();
@@ -711,41 +719,49 @@ namespace BuildTools
         /// <returns>True if the download is successful</returns>
         private bool DownloadFile(string url, string dest)
         {
-            using (WebClient client = new WebClient())
+            try
             {
-                _disposables.Add(client);
-                try
+                using (WebClient client = new WebClient())
                 {
-                    client.DownloadProgressChanged += (sender, e) =>
+                    _disposables.Add(client);
+                    try
                     {
-                        double bytesIn = e.BytesReceived;
-                        double totalBytes = e.TotalBytesToReceive;
-                        if (totalBytes < 0)
+                        client.DownloadProgressChanged += (sender, e) =>
                         {
-                            _form.ProgressIndeterminate();
-                        }
-                        else
+                            double bytesIn = e.BytesReceived;
+                            double totalBytes = e.TotalBytesToReceive;
+                            if (totalBytes < 0)
+                            {
+                                _form.ProgressIndeterminate();
+                            }
+                            else
+                            {
+                                _form.Progress((int) bytesIn, (int) totalBytes);
+                            }
+                        };
+                        client.DownloadFileAsync(new Uri(url), dest);
+                        // Make this thread wait for the download to finish
+                        while (client.IsBusy)
                         {
-                            _form.Progress((int) bytesIn, (int) totalBytes);
+                            Thread.Sleep(50);
                         }
-                    };
-                    client.DownloadFileAsync(new Uri(url), dest);
-                    // Make this thread wait for the download to finish
-                    while (client.IsBusy)
+                    }
+                    catch (Exception)
                     {
-                        Thread.Sleep(50);
+                        return false;
+                    }
+                    finally
+                    {
+                        _disposables.Remove(client);
                     }
                 }
-                catch (Exception)
-                {
-                    return false;
-                }
-                finally
-                {
-                    _disposables.Remove(client);
-                }
+                return true;
             }
-            return true;
+            catch (Exception)
+            {
+                return false;
+            }
+            
         }
 
         /// <summary>
