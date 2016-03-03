@@ -6,6 +6,12 @@ check for and automatically setup the proper environment for BuildTools to run i
 and download updates to the BuildTools jar itself. It is currently working on 64 bit systems, there seems to be some
 issues when running with a 32 bit JVM. This seems to be a BuildTools.jar issue, though.
 
+Downloading
+-----------
+
+You can download the most recent build from my server: https://www.demonwav.com/down/BuildToolsGUI.exe
+No other setup needs to be done, just run the program once you've downloaded it.
+
 Building
 --------
 
