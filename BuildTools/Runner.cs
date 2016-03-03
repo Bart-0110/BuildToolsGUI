@@ -271,7 +271,8 @@ namespace BuildTools
         /// true, it will first call <see cref="UpdateJar()"/>.
         /// </summary>
         /// <param name="autoUpdate">If true, this will first call <see cref="UpdateJar()"/> Before continuing.</param>
-        public void RunBuildTools(bool autoUpdate)
+        /// <param name="version">The version of Spigot to build.</param>
+        public void RunBuildTools(bool autoUpdate, string version)
         {
             if (!Environment.Is64BitOperatingSystem)
             {
@@ -456,7 +457,7 @@ namespace BuildTools
                     buildProcess.StartInfo.WorkingDirectory = Path.GetFullPath(dir);
                     buildProcess.StartInfo.Arguments =
                         "--login -c \"git config --global --replace-all core.autocrlf true & java -jar " +
-                        (string)_json["buildTools"]["name"] + " --rev 1.9\"";
+                        (string)_json["buildTools"]["name"] + " --rev " + version + "\"";
                     buildProcess.OutputDataReceived += (sender, args) => _form.AppendRawText(args.Data);
                     buildProcess.ErrorDataReceived += (sender, args) => _form.AppendRawText(args.Data);
                     buildProcess.Start();

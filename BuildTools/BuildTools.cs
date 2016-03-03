@@ -1,47 +1,39 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using HtmlAgilityPack;
 
 namespace BuildTools
 {
     public partial class BuildTools : Form {
         // Delegates
         private delegate void AppendTextDelegate(string text);
-
         private readonly AppendTextDelegate _appendDelegate;
-
         private delegate void AppendRawTextDelegat(string text);
-
         private readonly AppendRawTextDelegat _appendRawDelegate;
-
         private delegate void DisableDelegate();
-
         private readonly DisableDelegate _disableDelegate;
-
         private delegate void EnableDelegate();
-
         private readonly EnableDelegate _enableDelegate;
-
         private delegate void ShowProgressDelegate();
-
         private readonly ShowProgressDelegate _showProgressDelegate;
-
         private delegate void HideProgressDelegate();
-
         private readonly HideProgressDelegate _hideProgressDelegate;
-
         private delegate void IndeterminateProgressDelegate();
-
         private readonly IndeterminateProgressDelegate _indeterminateProgressDelegate;
-
         private delegate void ProgressPercentDelegate(int place, int total);
-
         private readonly ProgressPercentDelegate _progressPercentDelegate;
+        private delegate void UpdateVersionsDelegate();
+        private readonly UpdateVersionsDelegate _updateVersionsDelegate;
 
         // Stuff
         private readonly Runner _runner;
         private string _lastLog = "";
+        private volatile List<string> _versions = new List<string>();
 
         /// <summary>
         /// Constructor for the form
@@ -52,6 +44,9 @@ namespace BuildTools
             undoBT.Visible = false;
             progress.Visible = false;
 
+            versionBox.SelectedIndex = 0;
+            GetVersions();
+
             // delegates
             _appendDelegate = AppendText;
             _appendRawDelegate = AppendRawText;
@@ -61,13 +56,21 @@ namespace BuildTools
             _hideProgressDelegate = ProgressHide;
             _indeterminateProgressDelegate = ProgressIndeterminate;
             _progressPercentDelegate = Progress;
+            _updateVersionsDelegate = UpdateVersions;
         }
 
         // Run BuildTools Button Clicked
         private void runBT_Click(object sender, EventArgs e) {
             bool update = autoUpdateCB.Checked;
+            string version;
+            if (versionBox.SelectedIndex == 0) {
+                version = "latest";
+            } else {
+                version = _versions[versionBox.SelectedIndex - 1];
+            }
+
             Thread thread = new Thread(delegate() {
-                _runner.RunBuildTools(update);
+                _runner.RunBuildTools(update, version);
                 Enable();
                 ProgressHide();
             });
@@ -139,6 +142,7 @@ namespace BuildTools
             else {
                 updateBT.Enabled = false;
                 runBT.Enabled = false;
+                versionBox.Enabled = false;
             }
 
         }
@@ -153,6 +157,7 @@ namespace BuildTools
             else {
                 updateBT.Enabled = true;
                 runBT.Enabled = true;
+                versionBox.Enabled = true;
             }
         }
 
@@ -215,6 +220,80 @@ namespace BuildTools
             _runner.CleanUp();
             Application.Exit();
             Environment.Exit(0);
+        }
+
+        private void GetVersions() {
+            new Thread(delegate () {
+                string versionsHtml = GetHtml("https://hub.spigotmc.org/versions/");
+                if (versionsHtml == "")
+                    return;
+
+                // Convert the HTML to XHTML to use an XML parser
+                HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+                doc.LoadHtml(versionsHtml);
+                if (doc.ParseErrors != null) {
+                    while (doc.ParseErrors.GetEnumerator().MoveNext()) {
+                        Console.Write(doc.ParseErrors.GetEnumerator().Current);
+                    }
+                }
+                HtmlNodeCollection nodes = doc.DocumentNode.SelectNodes("//a");
+                foreach (HtmlNode node in nodes) {
+                    if (node.InnerText.EndsWith(".json") && node.InnerText.StartsWith("1.")) {
+                        _versions.Add(node.InnerText.Remove(node.InnerText.Length - 5));
+                    }
+                }
+
+                UpdateVersions();
+            }).Start();
+        }
+
+        private Stream GenerateStreamFromString(String s) {
+            MemoryStream stream = new MemoryStream();
+            StreamWriter writer = new StreamWriter(stream);
+            writer.Write(s);
+            writer.Flush();
+            stream.Position = 0;
+            return stream;
+        }
+
+        private string GetHtml(string url) {
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+            if (response.StatusCode == HttpStatusCode.OK) {
+                Stream receiveStream = response.GetResponseStream();
+                StreamReader readStream = null;
+
+                if (response.CharacterSet == null) {
+                    readStream = new StreamReader(receiveStream);
+                } else {
+                    readStream = new StreamReader(receiveStream, Encoding.GetEncoding(response.CharacterSet));
+                }
+
+                string data = readStream.ReadToEnd();
+
+                response.Close();
+                readStream.Close();
+
+                return data;
+            }
+            return "";
+        }
+
+        private void UpdateVersions() {
+            if (InvokeRequired) {
+                Invoke(_updateVersionsDelegate);
+            } else {
+                ComboBox.ObjectCollection items = versionBox.Items;
+                items.Clear();
+                items.Add("Latest");
+                _versions.Sort();
+                _versions.Reverse();
+                foreach (string s in _versions) {
+                    items.Add(s);
+                }
+                versionBox.SelectedIndex = 0;
+            }
         }
     }
 }

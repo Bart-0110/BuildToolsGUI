@@ -37,10 +37,12 @@
             this.undoBT = new System.Windows.Forms.Button();
             this.progress = new System.Windows.Forms.ProgressBar();
             this.linkLabel = new System.Windows.Forms.LinkLabel();
+            this.versionBox = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // runBT
             // 
+            this.runBT.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.runBT.Location = new System.Drawing.Point(0, 11);
             this.runBT.Name = "runBT";
             this.runBT.Size = new System.Drawing.Size(107, 23);
@@ -52,6 +54,7 @@
             // updateBT
             // 
             this.updateBT.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.updateBT.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.updateBT.Location = new System.Drawing.Point(510, 11);
             this.updateBT.Name = "updateBT";
             this.updateBT.Size = new System.Drawing.Size(124, 23);
@@ -64,6 +67,7 @@
             // 
             this.autoUpdateCB.Checked = true;
             this.autoUpdateCB.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.autoUpdateCB.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.autoUpdateCB.Location = new System.Drawing.Point(113, 11);
             this.autoUpdateCB.Name = "autoUpdateCB";
             this.autoUpdateCB.Size = new System.Drawing.Size(187, 24);
@@ -92,6 +96,7 @@
             // clearBT
             // 
             this.clearBT.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.clearBT.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.clearBT.Location = new System.Drawing.Point(559, 526);
             this.clearBT.Name = "clearBT";
             this.clearBT.Size = new System.Drawing.Size(75, 23);
@@ -103,6 +108,7 @@
             // undoBT
             // 
             this.undoBT.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.undoBT.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.undoBT.Location = new System.Drawing.Point(478, 526);
             this.undoBT.Name = "undoBT";
             this.undoBT.Size = new System.Drawing.Size(75, 23);
@@ -126,7 +132,7 @@
             this.linkLabel.AutoSize = true;
             this.linkLabel.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
             this.linkLabel.LinkColor = System.Drawing.Color.Blue;
-            this.linkLabel.Location = new System.Drawing.Point(306, 16);
+            this.linkLabel.Location = new System.Drawing.Point(375, 16);
             this.linkLabel.Name = "linkLabel";
             this.linkLabel.Size = new System.Drawing.Size(67, 13);
             this.linkLabel.TabIndex = 7;
@@ -134,11 +140,25 @@
             this.linkLabel.Text = "View Source";
             this.linkLabel.VisitedLinkColor = System.Drawing.Color.Blue;
             // 
+            // versionBox
+            // 
+            this.versionBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.versionBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.versionBox.FlatStyle = System.Windows.Forms.FlatStyle.System;
+            this.versionBox.FormattingEnabled = true;
+            this.versionBox.Items.AddRange(new object[] {
+            "Latest"});
+            this.versionBox.Location = new System.Drawing.Point(448, 13);
+            this.versionBox.Name = "versionBox";
+            this.versionBox.Size = new System.Drawing.Size(56, 21);
+            this.versionBox.TabIndex = 8;
+            // 
             // BuildTools
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(634, 561);
+            this.Controls.Add(this.versionBox);
             this.Controls.Add(this.linkLabel);
             this.Controls.Add(this.progress);
             this.Controls.Add(this.undoBT);
@@ -167,6 +187,7 @@
         private System.Windows.Forms.Button undoBT;
         private System.Windows.Forms.ProgressBar progress;
         private System.Windows.Forms.LinkLabel linkLabel;
+        private System.Windows.Forms.ComboBox versionBox;
     }
 }
 
