@@ -139,6 +139,7 @@
             this.linkLabel.TabStop = true;
             this.linkLabel.Text = "View Source";
             this.linkLabel.VisitedLinkColor = System.Drawing.Color.Blue;
+            this.linkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel_Click);
             // 
             // versionBox
             // 

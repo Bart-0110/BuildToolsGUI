@@ -7,8 +7,9 @@ using System.Threading;
 using System.Windows.Forms;
 using HtmlAgilityPack;
 
-namespace BuildTools
-{
+namespace BuildTools {
+    using System.Runtime.InteropServices;
+
     public partial class BuildTools : Form {
         // Delegates
         private delegate void AppendTextDelegate(string text);
@@ -34,13 +35,21 @@ namespace BuildTools
         private readonly Runner _runner;
         private string _lastLog = "";
         private volatile List<string> _versions = new List<string>();
+        private readonly GoogleAnalytics _googleAnalytics;
+        private bool _running;
+        private Job _job;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
         /// <summary>
         /// Constructor for the form
         /// </summary>
-        public BuildTools() {
+        public BuildTools(Guid guid, Job job) {
             InitializeComponent();
-            _runner = new Runner(this);
+            _job = job;
+            _googleAnalytics = new GoogleAnalytics(guid);
+            _runner = new Runner(this, _job, _googleAnalytics);
             undoBT.Visible = false;
             progress.Visible = false;
 
@@ -56,7 +65,10 @@ namespace BuildTools
             _hideProgressDelegate = ProgressHide;
             _indeterminateProgressDelegate = ProgressIndeterminate;
             _progressPercentDelegate = Progress;
-            _updateVersionsDelegate = UpdateVersions;
+			_updateVersionsDelegate = UpdateVersions;
+
+            Console.WriteLine(guid.ToString());
+            _googleAnalytics.SendEvent("Application", "Start");
         }
 
         // Run BuildTools Button Clicked
@@ -69,10 +81,16 @@ namespace BuildTools
                 version = _versions[versionBox.SelectedIndex - 1];
             }
 
+             _running = true;
+            _googleAnalytics.SendEvent("BuildTools Run", "Version: " + version);
+            _googleAnalytics.StartTimer("BuildTools Run Time");
+
             Thread thread = new Thread(delegate() {
                 _runner.RunBuildTools(update, version);
                 Enable();
                 ProgressHide();
+                _googleAnalytics.EndTimer("BuildTools Run Time");
+                _running = false;
             });
             Disable();
             thread.Start();
@@ -80,10 +98,17 @@ namespace BuildTools
 
         // Update BuildTools Button Clicked
         private void updateBT_Click(object sender, EventArgs e) {
+            _running = true;
+
+            _googleAnalytics.SendEvent("BuildTools Update", "Run");
+            _googleAnalytics.StartTimer("BuildTools Update Time");
+
             Thread thread = new Thread(delegate() {
                 _runner.UpdateJar();
                 Enable();
                 ProgressHide();
+                _googleAnalytics.EndTimer("BuildTools Update Time");
+                _running = false;
             });
             Disable();
             thread.Start();
@@ -91,6 +116,7 @@ namespace BuildTools
 
         // Clear Log Button Clicked
         private void clearBT_Click(object sender, EventArgs e) {
+            _googleAnalytics.SendEvent("Log", "Clear Button");
             _lastLog += outputTB.Text;
             outputTB.Text = "";
             undoBT.Visible = true;
@@ -98,6 +124,7 @@ namespace BuildTools
 
         // Undo Button Clicked
         private void undoBT_Click(object sender, EventArgs e) {
+            _googleAnalytics.SendEvent("Log", "Undo Button");
             outputTB.Text = _lastLog + outputTB.Text;
             _lastLog = "";
             undoBT.Visible = false;
@@ -111,8 +138,7 @@ namespace BuildTools
         public void AppendText(string text) {
             if (InvokeRequired) {
                 Invoke(_appendDelegate, text);
-            }
-            else {
+            } else {
                 outputTB.AppendText("--- " + text + "\n");
                 outputTB.ScrollToCaret();
             }
@@ -125,8 +151,7 @@ namespace BuildTools
         public void AppendRawText(string text) {
             if (InvokeRequired) {
                 Invoke(_appendRawDelegate, text);
-            }
-            else {
+            } else {
                 outputTB.AppendText(text + "\n");
                 outputTB.ScrollToCaret();
             }
@@ -138,13 +163,11 @@ namespace BuildTools
         private void Disable() {
             if (InvokeRequired) {
                 Invoke(_disableDelegate);
-            }
-            else {
+            } else {
                 updateBT.Enabled = false;
                 runBT.Enabled = false;
                 versionBox.Enabled = false;
             }
-
         }
 
         /// <summary>
@@ -153,8 +176,7 @@ namespace BuildTools
         private void Enable() {
             if (InvokeRequired) {
                 Invoke(_enableDelegate);
-            }
-            else {
+            } else {
                 updateBT.Enabled = true;
                 runBT.Enabled = true;
                 versionBox.Enabled = true;
@@ -168,8 +190,7 @@ namespace BuildTools
         public void ProgressShow() {
             if (InvokeRequired) {
                 Invoke(_showProgressDelegate);
-            }
-            else {
+            } else {
                 progress.Visible = true;
             }
         }
@@ -180,8 +201,7 @@ namespace BuildTools
         public void ProgressHide() {
             if (InvokeRequired) {
                 Invoke(_hideProgressDelegate);
-            }
-            else {
+            } else {
                 progress.Visible = false;
             }
         }
@@ -192,8 +212,7 @@ namespace BuildTools
         public void ProgressIndeterminate() {
             if (InvokeRequired) {
                 Invoke(_indeterminateProgressDelegate);
-            }
-            else {
+            } else {
                 progress.Style = ProgressBarStyle.Marquee;
             }
         }
@@ -206,8 +225,7 @@ namespace BuildTools
         public void Progress(int place, int total) {
             if (InvokeRequired) {
                 Invoke(_progressPercentDelegate, place, total);
-            }
-            else {
+            } else {
                 progress.Style = ProgressBarStyle.Continuous;
                 progress.Minimum = 0;
                 progress.Maximum = total;
@@ -218,8 +236,19 @@ namespace BuildTools
         // Exit button pressed
         private void BuildTools_FormClosed(object sender, FormClosedEventArgs e) {
             _runner.CleanUp();
+            if (_running) {
+                _googleAnalytics.SendEvent("BuildTools Run", "Premature Cancelation");
+                _googleAnalytics.EndTimer("BuildTools Run Time");
+            }
+            _job.Dispose();
             Application.Exit();
             Environment.Exit(0);
+        }
+
+        // Source link clicked
+        private void linkLabel_Click(object sender, LinkLabelLinkClickedEventArgs e) {
+            System.Diagnostics.Process.Start("https://github.com/DemonWav/BuildToolsGUI");
+            _googleAnalytics.SendEvent("Source", "Link Clicked");
         }
 
         private void GetVersions() {
@@ -247,16 +276,7 @@ namespace BuildTools
             }).Start();
         }
 
-        private Stream GenerateStreamFromString(String s) {
-            MemoryStream stream = new MemoryStream();
-            StreamWriter writer = new StreamWriter(stream);
-            writer.Write(s);
-            writer.Flush();
-            stream.Position = 0;
-            return stream;
-        }
-
-        private string GetHtml(string url) {
+        private static string GetHtml(string url) {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
 
@@ -265,9 +285,13 @@ namespace BuildTools
                 StreamReader readStream = null;
 
                 if (response.CharacterSet == null) {
-                    readStream = new StreamReader(receiveStream);
+                    if (receiveStream != null) {
+                        readStream = new StreamReader(receiveStream);
+                    }
                 } else {
-                    readStream = new StreamReader(receiveStream, Encoding.GetEncoding(response.CharacterSet));
+                    if (receiveStream != null) {
+                        readStream = new StreamReader(receiveStream, Encoding.GetEncoding(response.CharacterSet));
+                    }
                 }
 
                 string data = readStream.ReadToEnd();

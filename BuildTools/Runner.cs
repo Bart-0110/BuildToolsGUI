@@ -9,25 +9,26 @@ using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
 
 
-namespace BuildTools
-{
+namespace BuildTools {
+
     /// <summary>
     /// General worker class
     /// </summary>
-    public class Runner
-    {
+    public class Runner {
         /// <summary>
         /// Output directory for all files
         /// </summary>
-        public static readonly string dir = "BuildTools\\";
+        public static readonly string Dir = "BuildTools\\";
         /// <summary>
         /// GUI part of the program
         /// </summary>
         private readonly BuildTools _form;
+
         /// <summary>
         /// Final directory for the portable Git extract
         /// </summary>
-        private readonly string gitDir = "BuildTools/PortableGit";
+        private const string GitDir = "BuildTools/PortableGit";
+
         /// <summary>
         /// Json response for the Jenkins api
         /// </summary>
@@ -41,14 +42,19 @@ namespace BuildTools
         /// </summary>
         private readonly HashSet<IDisposable> _disposables = new HashSet<IDisposable>();
 
+        private readonly Job _job;
+        private readonly GoogleAnalytics _googleAnalytics;
 
         /// <summary>
         /// Constructor for the worker class
         /// </summary>
         /// <param name="form">The GUI</param>
-        public Runner(BuildTools form)
-        {
+        /// <param name="job">Job Object</param>
+        /// <param name="googleAnalytics">Google Analytics object</param>
+        public Runner(BuildTools form, Job job, GoogleAnalytics googleAnalytics) {
             _form = form;
+            _job = job;
+            _googleAnalytics = googleAnalytics;
         }
 
         /// <summary>
@@ -57,29 +63,23 @@ namespace BuildTools
         /// Returns false if no update is needed.
         /// </summary>
         /// <returns>True if an update is needed.</returns>
-        public bool CheckUpdate()
-        {
-            if (!GetJson())
-            {
+        public bool CheckUpdate() {
+            if (!GetJson()) {
                 return false;
             }
-            if (File.Exists(dir + (string) _json["buildTools"]["name"]))
-            {
+            if (File.Exists(Dir + (string) _json["buildTools"]["name"])) {
                 int number = (int) _api["number"];
                 int currentBuildNumber;
                 bool success = GetBuildNumberFromJar(out currentBuildNumber);
 
-                if (success)
-                {
+                if (success) {
                     bool update = currentBuildNumber < number;
                     if (update)
                         _form.AppendText("BuildTools is out of date");
                     
                     return update;
                 }
-            }
-            else
-            {
+            } else {
                 _form.AppendText("BuildTools does not exist");
             }
             return true;
@@ -89,26 +89,21 @@ namespace BuildTools
         /// Get the JSON response from my server and Jenkins and save them as JObject's.
         /// </summary>
         /// <returns>True if the JSON responses were parsed successfully.</returns>
-        private bool GetJson()
-        {
-            if (_json == null)
-            {
+        private bool GetJson() {
+            if (_json == null) {
                 _form.AppendText("Retrieving information from the server");
 
                 _json = DownloadJson("https://www.demonwav.com/buildtools.json");
 
-                if (_json == null)
-                {
+                if (_json == null) {
                     _form.AppendText("Error retrieving data, canceling");
                     return false;
                 }
             }
-            if (_api == null)
-            {
+            if (_api == null) {
                 _api = DownloadJson((string) _json["buildTools"]["api"]);
 
-                if (_api == null)
-                {
+                if (_api == null) {
                     _form.AppendText("Error retrieving data, canceling");
                     return false;
                 }
@@ -121,45 +116,32 @@ namespace BuildTools
         /// </summary>
         /// <param name="url">URL to get JSON response from</param>
         /// <returns>JObject formed by the parsed JSON</returns>
-        private JObject DownloadJson(string url)
-        {
-            try
-            {
+        private JObject DownloadJson(string url) {
+            try {
                 WebRequest request = WebRequest.Create(url);
-                using (Stream stream = request.GetResponse().GetResponseStream())
-                {
-                    try
-                    {
+            	using (Stream stream = request.GetResponse().GetResponseStream()) {
+                    try {
                         _disposables.Add(stream);
-                        if (stream != null)
-                        {
+                        if (stream != null) {
                             StreamReader reader = new StreamReader(stream);
 
                             string line;
                             string finalOutput = "";
-                            while ((line = reader.ReadLine()) != null)
-                            {
-                                finalOutput += line + "\n";
+                            while ((line = reader.ReadLine()) != null) {
+                              finalOutput += line + "\n";
                             }
 
-                            return JObject.Parse(finalOutput);
+                          return JObject.Parse(finalOutput);
                         }
+                    } catch (Exception) {
+                      _form.AppendText("There was an error while trying to receive data from the server");
+                      return null;
+                    } finally {
+                      _disposables.Remove(stream);
                     }
-                    catch (Exception)
-                    {
-                        _form.AppendText("There was an error while trying to receive data from the server");
-                        return null;
-                    }
-                    finally
-                    {
-                        _disposables.Remove(stream);
-                    }
-                
-                }
-                return null;
-            }
-            catch (Exception)
-            {
+                    return null;
+              	}
+            } catch (Exception) {
                 _form.AppendText("There was an error while trying to receive data from the server");
                 return null;
             }
@@ -171,32 +153,25 @@ namespace BuildTools
         /// </summary>
         /// <param name="i">The build number of the jar</param>
         /// <returns>Whether the jar file is valid.</returns>
-        private bool GetBuildNumberFromJar(out int i)
-        {
+        private bool GetBuildNumberFromJar(out int i) {
             _form.AppendText("Checking downloaded BuildTools");
-            try
-            {
-                using (ZipFile zip = ZipFile.Read(dir + (string) _json["buildTools"]["name"]))
-                {
+            try {
+                using (ZipFile zip = ZipFile.Read(Dir + (string) _json["buildTools"]["name"])) {
                     ZipEntry entry = zip["META-INF/MANIFEST.MF"];
-                    using (MemoryStream stream = new MemoryStream())
-                    {
+                    using (MemoryStream stream = new MemoryStream()) {
                         entry.Extract(stream);
                         stream.Position = 0;
 
                         StreamReader reader = new StreamReader(stream);
 
                         string line;
-                        while ((line = reader.ReadLine()) != null)
-                        {
-                            if (line.StartsWith("Implementation-Version: "))
-                            {
+                        while ((line = reader.ReadLine()) != null) {
+                            if (line.StartsWith("Implementation-Version: ")) {
                                 string version = line.Replace("Implementation-Version: ", "");
                                 string[] split = version.Split('-');
 
                                 // at least put some effort into making sure this is a BuildTools jar
-                                if (!"git".Equals(split[0]) || !"BuildTools".Equals(split[1]))
-                                {
+                                if (!"git".Equals(split[0]) || !"BuildTools".Equals(split[1])) {
                                     _form.AppendText("Jar is invalid");
                                     i = 0;
                                     return false;
@@ -210,9 +185,7 @@ namespace BuildTools
                     i = 0;
                     return false;
                 }
-            }
-            catch (Exception)
-            {
+            } catch (Exception) {
                 _form.AppendText("Jar is invalid");
                 i = 0;
                 return false;
@@ -223,28 +196,24 @@ namespace BuildTools
         /// Download a new copy of the BuildTools jar
         /// </summary>
         /// <returns>True if the update was successful</returns>
-        public bool UpdateJar()
-        {
-            if (!Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
+        public bool UpdateJar() {
+            if (!Directory.Exists(Dir)) {
+                Directory.CreateDirectory(Dir);
             }
             _form.AppendText("Checking for update");
             _form.ProgressShow();
             _form.ProgressIndeterminate();
             bool update = CheckUpdate();
-            if (update)
-            {
+            if (update) {
+                _googleAnalytics.SendEvent("BuildTools Update", "Download");
                 _form.AppendText("Update needed for BuildTools");
-                if (!GetJson())
-                {
+                if (!GetJson()) {
                     return false;
                 }
 
-                if (File.Exists(dir + (string) _json["buildTools"]["name"]))
-                {
+                if (File.Exists(Dir + (string) _json["buildTools"]["name"])) {
                     _form.AppendText("Deleting current BuildTools");
-                    File.Delete(dir + (string) _json["buildTools"]["name"]);
+                    File.Delete(Dir + (string) _json["buildTools"]["name"]);
                 }
 
                 string baseUrl = (string) _api["url"];
@@ -252,15 +221,13 @@ namespace BuildTools
                 string fullUrl = baseUrl + "artifact/" + relativePath;
 
                 _form.AppendText("Downloading BuildTools");
-                if (!DownloadFile(fullUrl, dir + (string) _json["buildTools"]["name"]))
-                {
+                if (!DownloadFile(fullUrl, Dir + (string) _json["buildTools"]["name"])) {
+                    _googleAnalytics.SendEvent("BuildTools Update", "Failed");
                     _form.AppendText("BuildTools failed to download");
                     return false;
                 }
                 _form.AppendText("Download complete");
-            }
-            else
-            {
+            } else {
                 _form.AppendText("BuildTools is up to date, no need to update");
             }
             return true;
@@ -271,106 +238,88 @@ namespace BuildTools
         /// true, it will first call <see cref="UpdateJar()"/>.
         /// </summary>
         /// <param name="autoUpdate">If true, this will first call <see cref="UpdateJar()"/> Before continuing.</param>
-        /// <param name="version">The version of Spigot to build.</param>
-        public void RunBuildTools(bool autoUpdate, string version)
-        {
-            if (!Environment.Is64BitOperatingSystem)
-            {
+        /// <param name="version">Version to build.</param>
+        public void RunBuildTools(bool autoUpdate, string version) {
+            if (!Environment.Is64BitOperatingSystem) {
                 _form.AppendText("BuildTools does not reliably work on 32 bit systems, if you have problems please re-run this on a 64 bit system.");
             }
 
-            if (!Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
+            if (!Directory.Exists(Dir)) {
+                Directory.CreateDirectory(Dir);
             }
             _form.ProgressShow();
             _form.ProgressIndeterminate();
-            if (autoUpdate)
-            {
-                if (!UpdateJar())
+            if (autoUpdate) {
+                if (!UpdateJar()) {
                     return;
+                }
             }
 
             // Java check
             bool javaInstalled;
-            if (!CheckJava(out javaInstalled))
-            {
-                string javaFile = dir + (string) _json["java"]["name"];
-                if (!javaInstalled)
-                {
+            if (!CheckJava(out javaInstalled)) {
+                string javaFile = Dir + (string) _json["java"]["name"];
+                if (!javaInstalled) {
+                    _googleAnalytics.SendEvent("Java", "Installed due to not already being installed");
                     // Java is not installed
                     _form.AppendText("Downloading Java installer");
 
                     bool success = DownloadJava(javaFile);
-                    if (!success)
-                    {
+                    if (!success) {
+                        _googleAnalytics.SendEvent("Java", "Could not be downloaded");
                         _form.AppendText("Java could not be downloaded, canceling");
                     }
 
                     _form.ProgressIndeterminate();
                     success = InstallJava(javaFile);
-                    if (!success)
-                    {
+                    if (!success) {
+                        _googleAnalytics.SendEvent("Java", "Could not be installed");
                         _form.AppendText("Java could not be installed, canceling");
                     }
 
-                    if (CheckJava())
-                    {
+                    if (CheckJava()) {
                         _form.AppendText("Java installed successfully");
-                    }
-                    else
-                    {
+                    } else {
                         _form.AppendText("Java could not be installed, canceling");
                         return;
                     }
-                }
-                else
-                {
+                } else {
                     // Java is installed
+                    _googleAnalytics.SendEvent("Java", "32 bit install, reinstall 64 bit");
                     _form.AppendText("This is a 64 bit operating system, but the 32 bit JRE is installed. Downloading 64 bit JRE");
                     bool success = DownloadJava(javaFile);
-                    if (!success)
-                    {
+                    if (!success) {
                         _form.AppendText("Unable to download the 64 bit Java installer, will continue with the 32 bit JRE. This may cause the build to fail");
-                    }
-                    else
-                    {
+                    } else {
                         _form.AppendText("Uninstalling current 32 bit JRE");
                         success = UninstallJava();
-                        if (!success)
-                        {
+                        if (!success) {
+                            _googleAnalytics.SendEvent("Java", "Error uninstalling Java");
                             _form.AppendText("There was an error while attempting to uninstall the 32 bit JRE");
                             CheckJava(out javaInstalled);
-                            if (javaInstalled)
-                            {
+                            if (javaInstalled) {
                                 _form.AppendText("Java still seems to be installed, though. Will continue with the 32 bit JRE. This may cause the build to fail");
-                            }
-                            else
-                            {
+                            } else {
                                 _form.AppendText("In spite of the error, it seems Java has been uninstalled. Will now install the 64 bit JRE");
                                 success = InstallJava(javaFile);
-                                if (!success)
-                                {
+                                if (!success) {
+                                    _googleAnalytics.SendEvent("Java", "Could not be installed");
                                     _form.AppendText("Java failed to install, canceling");
                                     return;
                                 }
-                                if (!FullJavaCheck())
-                                {
+                                if (!FullJavaCheck()) {
                                     return;
                                 }
                             }
-                        }
-                        else
-                        {
+                        } else {
                             _form.AppendText("Installing the 64 bit JRE");
                             success = InstallJava(javaFile);
-                            if (!success)
-                            {
+                            if (!success) {
+                                _googleAnalytics.SendEvent("Java", "Could not be installed");
                                 _form.AppendText("Java failed to install, canceling");
                                 return;
                             }
-                            if (!FullJavaCheck())
-                            {
+                            if (!FullJavaCheck()) {
                                 return;
                             }
                         }
@@ -380,48 +329,41 @@ namespace BuildTools
             }
 
             // Git check
-            if (!CheckGit())
-            {
-                string gitFile = dir + "portable_git.7z.exe";
+            if (!CheckGit()) {
+                _googleAnalytics.SendEvent("Portable Git", "Downloading");
+                string gitFile = Dir + "portable_git.7z.exe";
                 _form.AppendText("Downloading portable Git");
 
                 bool success;
-                if (Environment.Is64BitOperatingSystem)
-                {
+                if (Environment.Is64BitOperatingSystem) {
                     success = DownloadFile((string)_json["git"]["64"], gitFile);
-                }
-                else
-                {
+                } else {
                     success = DownloadFile((string)_json["git"]["32"], gitFile);
                 }
-                if (!success)
-                {
+                if (!success) {
+                    _googleAnalytics.SendEvent("Portable Git", "Could not be downloaded");
                     _form.AppendText("Portable Git could not be downloaded, canceling");
                     return;
                 }
 
                 _form.ProgressIndeterminate();
-                using (Process extractProcess = new Process())
-                {
+                using (Process extractProcess = new Process()) {
                     _form.AppendText("Extracting portable Git");
                     _disposables.Add(extractProcess);
-                    try
-                    {
+                    try {
                         extractProcess.StartInfo.FileName = gitFile;
                         extractProcess.StartInfo.UseShellExecute = true;
                         extractProcess.StartInfo.Arguments = "-gm1 -nr -y";
                         extractProcess.Start();
+                        AddProcessToJob(extractProcess);
                         extractProcess.WaitForExit();
                         if (extractProcess.ExitCode != 0)
                             throw new Exception();
-                    }
-                    catch (Exception)
-                    {
+                    } catch (Exception) {
+                        _googleAnalytics.SendEvent("Portable Git", "Could not be installed");
                         _form.AppendText("Portable Git could not be installed, canceling");
                         return;
-                    }
-                    finally
-                    {
+                    } finally {
                         _disposables.Remove(extractProcess);
                     }
                 }
@@ -429,12 +371,9 @@ namespace BuildTools
                 File.Delete(gitFile);
 
                 _form.AppendText("Checking portable Git installation (this may take a while)");
-                if (CheckGit())
-                {
+                if (CheckGit()) {
                     _form.AppendText("Portable Git installed Successfully");
-                }
-                else
-                {
+                } else {
                     _form.AppendText("Portable Git could not be installed, canceling");
                     return;
                 }
@@ -443,39 +382,33 @@ namespace BuildTools
             _form.AppendRawText("");
             _form.AppendText("Running BuildTools.jar\n");
             // Run Build Tools
-            using (Process buildProcess = new Process())
-            {
+            using (Process buildProcess = new Process()) {
                 _disposables.Add(buildProcess);
-                try
-                {
+                try {
                     buildProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     buildProcess.StartInfo.CreateNoWindow = true;
-                    buildProcess.StartInfo.FileName = gitDir + "/bin/bash.exe";
+                    buildProcess.StartInfo.FileName = GitDir + "/bin/bash.exe";
                     buildProcess.StartInfo.UseShellExecute = false;
                     buildProcess.StartInfo.RedirectStandardOutput = true;
                     buildProcess.StartInfo.RedirectStandardError = true;
-                    buildProcess.StartInfo.WorkingDirectory = Path.GetFullPath(dir);
+                    buildProcess.StartInfo.WorkingDirectory = Path.GetFullPath(Dir);
                     buildProcess.StartInfo.Arguments =
                         "--login -c \"git config --global --replace-all core.autocrlf true & java -jar " +
                         (string)_json["buildTools"]["name"] + " --rev " + version + "\"";
                     buildProcess.OutputDataReceived += (sender, args) => _form.AppendRawText(args.Data);
                     buildProcess.ErrorDataReceived += (sender, args) => _form.AppendRawText(args.Data);
                     buildProcess.Start();
+                    AddProcessToJob(buildProcess);
                     buildProcess.BeginOutputReadLine();
                     buildProcess.BeginErrorReadLine();
                     buildProcess.WaitForExit();
                     if (buildProcess.ExitCode != 0)
                         throw new Exception();
-                }
-                catch (Exception)
-                {
+                } catch (Exception) {
                     _form.AppendText("There was an error while running BuildTools");
-                }
-                finally
-                {
+                } finally {
                     _disposables.Remove(buildProcess);
                 }
-                
             }
         }
         //******************//
@@ -488,48 +421,42 @@ namespace BuildTools
         /// run under an administrator, and we can't change the priviledge level of the current running process.
         /// </summary>
         /// <returns>True if Java was successfully uninstalled</returns>
-        private bool UninstallJava()
-        {
-            string file = dir + (string) _json["java"]["uninstaller"]["name"];
+        private bool UninstallJava() {
+            string file = Dir + (string) _json["java"]["uninstaller"]["name"];
             // We can't elevate the priviledges of this process to uninstall java, so create a new process to do so
             bool success = DownloadFile((string) _json["java"]["uninstaller"]["url"], file);
             _form.ProgressIndeterminate();
-            if (!success)
-            {
+            if (!success) {
                 return false;
             }
 
-            using (Process process = new Process())
-            {
+            using (Process process = new Process()) {
+               
+
                 _disposables.Add(process);
-                try
-                {
+                try {
                     process.StartInfo.FileName = file;
                     process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     process.StartInfo.CreateNoWindow = true;
                     process.Start();
+                    AddProcessToJob(process);
                     process.WaitForExit();
 
-                    if (process.ExitCode != 0)
+                    if (process.ExitCode != 0) {
                         throw new Exception();
-                }
-                catch (Exception)
-                {
+                    }
+                } catch (Exception) {
                     return false;
-                }
-                finally
-                {
+                } finally {
                     _disposables.Remove(process);
                 }
-
             }
             Thread.Sleep(100);
             File.Delete(file);
             return true;
         }
 
-        private bool CheckJava()
-        {
+        private bool CheckJava() {
             bool what;
             return CheckJava(out what);
         }
@@ -540,16 +467,13 @@ namespace BuildTools
         /// </summary>
         /// <param name="javaInstalled">Returns true if Java is installed at all, regardless of the system architecture.</param>
         /// <returns>True if Java is correctly installed</returns>
-        private bool CheckJava(out bool javaInstalled)
-        {
+        private bool CheckJava(out bool javaInstalled) {
             string path = (string) Registry.GetValue(@"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment", "Path", "");
             Environment.SetEnvironmentVariable("Path", path, EnvironmentVariableTarget.Process);
 
-            using (Process process = new Process())
-            {
+            using (Process process = new Process()) {
                 _disposables.Add(process);
-                try
-                {
+                try {
                     process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     process.StartInfo.CreateNoWindow = true;
                     process.StartInfo.FileName = "java";
@@ -561,30 +485,23 @@ namespace BuildTools
                     javaInstalled = true;
 
                     // Make sure a 64 bit JVM is installed on a 64 bit system
-                    if (Environment.Is64BitOperatingSystem)
-                    {
+                    if (Environment.Is64BitOperatingSystem) {
                         process.StartInfo.Arguments = "-d64 -version";
                         process.Start();
+                        AddProcessToJob(process);
                         process.WaitForExit();
 
-                        if (process.ExitCode == 0)
-                        {
+                        if (process.ExitCode == 0) {
                             return true;
                         }
                         return false;
-                    }
-                    else
-                    {
+                    } else {
                         return true;
                     }
-                }
-                catch (Exception)
-                {
+                } catch (Exception) {
                     javaInstalled = false;
                     return false;
-                }
-                finally
-                {
+                } finally {
                     _disposables.Remove(process);
                 }
             }
@@ -595,17 +512,15 @@ namespace BuildTools
         /// </summary>
         /// <param name="javaFile">The output file name to download to.</param>
         /// <returns>True if Java was downloaded correctly</returns>
-        private bool DownloadJava(string javaFile)
-        {
+        private bool DownloadJava(string javaFile) {
             bool success;
-            if (Environment.Is64BitOperatingSystem)
-            {
-                success = DownloadFile((string)_json["java"]["64"], javaFile);
+            if (Environment.Is64BitOperatingSystem) {
+                success = DownloadFile((string) _json["java"]["64"], javaFile);
             }
-            else
-            {
-                success = DownloadFile((string)_json["java"]["32"], javaFile);
+            else {
+                success = DownloadFile((string) _json["java"]["32"], javaFile);
             }
+
             return success;
         }
 
@@ -615,30 +530,24 @@ namespace BuildTools
         /// </summary>
         /// <param name="javaFile">The file to run</param>
         /// <returns>True if Java was installed correctly</returns>
-        private bool InstallJava(string javaFile)
-        {
-            using (Process installProcess = new Process())
-            {
+        private bool InstallJava(string javaFile) {
+            using (Process installProcess = new Process()) {
                 _form.AppendText("Running Java installer");
                 _disposables.Add(installProcess);
-                try
-                {
+                try {
                     installProcess.StartInfo.FileName = javaFile;
                     installProcess.Start();
+                    AddProcessToJob(installProcess);
                     installProcess.WaitForExit();
 
-                    if (installProcess.ExitCode != 0)
+                    if (installProcess.ExitCode != 0) {
                         throw new Exception();
-                }
-                catch (Exception)
-                {
+                    }
+                } catch (Exception) {
                     return false;
-                }
-                finally
-                {
+                } finally {
                     _disposables.Remove(installProcess);
                 }
-
             }
             Thread.Sleep(100);
             File.Delete(javaFile);
@@ -651,17 +560,14 @@ namespace BuildTools
         /// been made to correct the Java issue.
         /// </summary>
         /// <returns>True if Java is not installed</returns>
-        private bool FullJavaCheck()
-        {
+        private bool FullJavaCheck() {
             bool javaInstalled;
             bool correct = CheckJava(out javaInstalled);
-            if (correct)
-            {
+            if (correct) {
                 _form.AppendText("Java installed successfully");
                 return true;
             }
-            if (javaInstalled)
-            {
+            if (javaInstalled) {
                 _form.AppendText("Java was installed, but it is still 32 bit for some reason.");
                 _form.AppendText("Will continue with the 32 bit JRE. This may cause the build to fail");
                 return true;
@@ -674,39 +580,32 @@ namespace BuildTools
         /// Checks if portable Git is installed correctly.
         /// </summary>
         /// <returns>True if portable Git is installed correctly</returns>
-        private bool CheckGit()
-        {
-            if (Directory.Exists(gitDir))
-            {
-                using (Process process = new Process())
-                {
+        private bool CheckGit() {
+            if (Directory.Exists(GitDir)) {
+                using (Process process = new Process()) {
                     _disposables.Add(process);
-                    try
-                    {
+                    try {
                         process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                         process.StartInfo.CreateNoWindow = true;
-                        process.StartInfo.FileName = gitDir + "/bin/bash.exe";
+                        process.StartInfo.FileName = GitDir + "/bin/bash.exe";
                         process.StartInfo.UseShellExecute = false;
                         process.StartInfo.RedirectStandardOutput = true;
                         process.StartInfo.RedirectStandardError = true;
                         process.StartInfo.Arguments = "\"--login\" \"-c\" \"exit\"";
                         process.Start();
+                        AddProcessToJob(process);
                         process.WaitForExit();
                         if (process.ExitCode != 0)
                             throw new Exception();
 
                         _disposables.Remove(process);
                         return true;
-                    }
-                    catch (Exception)
-                    {
+                    } catch (Exception) {
                         _disposables.Remove(process);
                         return false;
                     }
-                    
                 }
             }
-
             return false;
         }
 
@@ -718,73 +617,54 @@ namespace BuildTools
         /// <param name="url">The URL to download the file from</param>
         /// <param name="dest">The relative or absolute path to the destination file to be saved</param>
         /// <returns>True if the download is successful</returns>
-        private bool DownloadFile(string url, string dest)
-        {
-            try
-            {
-                using (WebClient client = new WebClient())
-                {
-                    _disposables.Add(client);
-                    try
-                    {
-                        client.DownloadProgressChanged += (sender, e) =>
-                        {
-                            double bytesIn = e.BytesReceived;
-                            double totalBytes = e.TotalBytesToReceive;
-                            if (totalBytes < 0)
-                            {
-                                _form.ProgressIndeterminate();
-                            }
-                            else
-                            {
-                                _form.Progress((int) bytesIn, (int) totalBytes);
-                            }
-                        };
-                        client.DownloadFileAsync(new Uri(url), dest);
-                        // Make this thread wait for the download to finish
-                        while (client.IsBusy)
-                        {
-                            Thread.Sleep(50);
+        private bool DownloadFile(string url, string dest) {
+            using (WebClient client = new WebClient()) {
+                _disposables.Add(client);
+                try {
+                    client.DownloadProgressChanged += (sender, e) => {
+                        double bytesIn = e.BytesReceived;
+                        double totalBytes = e.TotalBytesToReceive;
+                        if (totalBytes < 0) {
+                            _form.ProgressIndeterminate();
                         }
-                    }
-                    catch (Exception)
+                        else {
+                            _form.Progress((int) bytesIn, (int) totalBytes);
+                        }
+                    };
+
+                    client.DownloadFileAsync(new Uri(url), dest);
+                    // Make this thread wait for the download to finish
+                    while (client.IsBusy)
                     {
-                        return false;
+                        Thread.Sleep(50);
                     }
-                    finally
-                    {
-                        _disposables.Remove(client);
-                    }
+                } catch (Exception) {
+                    return false;
+                } finally {
+                    _disposables.Remove(client);
                 }
-                return true;
             }
-            catch (Exception)
-            {
-                return false;
-            }
-            
+            return true;
         }
 
         /// <summary>
         /// If the application is closed, this will be run before exit. This will go through the list of any current
         /// work that may be running, and it will stop and dispose of them.
         /// </summary>
-        public void CleanUp()
-        {
-            foreach (IDisposable disposable in _disposables)
-            {
-                if (disposable is Process)
-                {
+        public void CleanUp() {
+            foreach (IDisposable disposable in _disposables) {
+                if (disposable is Process) {
                     Process process = (Process) disposable;
                     process.Kill();
-                }
-                else if (disposable is WebClient)
-                {
+                } else if (disposable is WebClient) {
                     WebClient client = (WebClient) disposable;
                     client.CancelAsync();
                 }
                 disposable.Dispose();
             }
+        }
+        private void AddProcessToJob(Process process) {
+            _job.AddProcess(process.Handle);
         }
     }
 }
