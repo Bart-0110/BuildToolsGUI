@@ -8,6 +8,7 @@ namespace BuildTools {
         private static readonly string appdata = Environment.GetEnvironmentVariable("APPDATA");
         private static readonly string dir = appdata + "\\btgui\\";
         private static readonly string file = dir + "gaclientid";
+        public static readonly string CheckUpdate = dir + "checkUpdate";
 
         /// <summary>
         /// The main entry point for the application.

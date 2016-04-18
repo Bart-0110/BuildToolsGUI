@@ -1,5 +1,4 @@
-﻿using System.Net.Http;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -19,7 +18,7 @@ namespace BuildTools {
         }
 
         public void SendEvent(string category, string action) {
-            Dictionary<string, string> values = new Dictionary<string, string>() {
+            NameValueCollection values = new NameValueCollection() {
                     { "t", "event" },
                     { "ec", category },
                     { "ea", action },
@@ -42,7 +41,7 @@ namespace BuildTools {
 
                 timer.Clear();
 
-                Dictionary<string, string> values = new Dictionary<string, string> {
+                NameValueCollection values = new NameValueCollection() {
                     { "t", "timing" },
                     { "utc", key },
                     { "utv", key },
@@ -55,48 +54,28 @@ namespace BuildTools {
             }
         }
 
-        private void Send(Dictionary<string, string> info) {
+        private void Send(NameValueCollection info) {
             Send(info, false);
         }
 
-        private void Send(Dictionary<string, string> info, bool wait) {
-            using (HttpClient client = new HttpClient()) {
-                Dictionary<string, string> values = new Dictionary<string, string> {
-                    { "v", "1" },
-                    { "tid", TrackingId },
-                    { "cid", _guid.ToString() }
-                };
+        private void Send(NameValueCollection info, bool wait) {
+            NameValueCollection values = new NameValueCollection() {
+                { "v", "1" },
+                { "tid", TrackingId },
+                { "cid", _guid.ToString() }
+            };
 
-                foreach (KeyValuePair<string, string> keyValuePair in info) {
-                    values.Add(keyValuePair.Key, keyValuePair.Value);
-                }
+            var items = info.AllKeys.SelectMany(info.GetValues, (k, v) => new { key = k, value = v });
+            foreach (var item in items) {
+                values.Add(item.key, item.value);
+            }
 
+            try {
                 using (WebClient webClient = new WebClient()) {
-                    Console.WriteLine("Sending Post to: " + GoogleAnalyticsUrl);
-                    Console.WriteLine("With: " + ToDebugString(values));
                     NameValueCollection collection = new NameValueCollection();
-                    byte[] response = webClient.UploadValues(GoogleAnalyticsUrl, "POST", ToNameValueCollection(values));
-                    Console.WriteLine(System.Text.Encoding.UTF8.GetString(response));
+                    webClient.UploadValues(GoogleAnalyticsUrl, "POST", values);
                 }
-            }
-        }
-
-        public static string ToDebugString<TKey, TValue>(IDictionary<TKey, TValue> dictionary) {
-            return "{" + string.Join(",", dictionary.Select(kv => kv.Key.ToString() + "=" + kv.Value.ToString()).ToArray()) + "}";
-        }
-
-        public static NameValueCollection ToNameValueCollection<TKey, TValue>(IDictionary<TKey, TValue> dict) {
-            NameValueCollection nameValueCollection = new NameValueCollection();
-
-            foreach (KeyValuePair<TKey, TValue> kvp in dict) {
-                string value = null;
-                if (kvp.Value != null)
-                    value = kvp.Value.ToString();
-
-                nameValueCollection.Add(kvp.Key.ToString(), value);
-            }
-
-            return nameValueCollection;
+            } catch (Exception) {}
         }
     }
 }

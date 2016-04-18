@@ -67,8 +67,18 @@ namespace BuildTools {
             _progressPercentDelegate = Progress;
 			_updateVersionsDelegate = UpdateVersions;
 
+            if (File.Exists(Program.CheckUpdate)) {
+                string text = File.ReadAllText(Program.CheckUpdate);
+                if (string.IsNullOrEmpty(text) || text.Trim().ToLower() == "false") {
+                    autoUpdateCB.Checked = false;
+                }
+            }
+
             Console.WriteLine(guid.ToString());
-            _googleAnalytics.SendEvent("Application", "Start");
+            new Thread(delegate () {
+                _googleAnalytics.SendEvent("Application", "Start");
+            }).Start();
+            
         }
 
         // Run BuildTools Button Clicked
@@ -82,10 +92,10 @@ namespace BuildTools {
             }
 
              _running = true;
-            _googleAnalytics.SendEvent("BuildTools Run", "Version: " + version);
-            _googleAnalytics.StartTimer("BuildTools Run Time");
-
+            
             Thread thread = new Thread(delegate() {
+                _googleAnalytics.SendEvent("BuildTools Run", "Version: " + version);
+                _googleAnalytics.StartTimer("BuildTools Run Time");
                 _runner.RunBuildTools(update, version);
                 Enable();
                 ProgressHide();
@@ -100,10 +110,11 @@ namespace BuildTools {
         private void updateBT_Click(object sender, EventArgs e) {
             _running = true;
 
-            _googleAnalytics.SendEvent("BuildTools Update", "Run");
-            _googleAnalytics.StartTimer("BuildTools Update Time");
+            
 
             Thread thread = new Thread(delegate() {
+                _googleAnalytics.SendEvent("BuildTools Update", "Run");
+                _googleAnalytics.StartTimer("BuildTools Update Time");
                 _runner.UpdateJar();
                 Enable();
                 ProgressHide();
@@ -116,7 +127,10 @@ namespace BuildTools {
 
         // Clear Log Button Clicked
         private void clearBT_Click(object sender, EventArgs e) {
-            _googleAnalytics.SendEvent("Log", "Clear Button");
+            new Thread(delegate () {
+                _googleAnalytics.SendEvent("Log", "Clear Button");
+            }).Start();
+            
             _lastLog += outputTB.Text;
             outputTB.Text = "";
             undoBT.Visible = true;
@@ -124,7 +138,10 @@ namespace BuildTools {
 
         // Undo Button Clicked
         private void undoBT_Click(object sender, EventArgs e) {
-            _googleAnalytics.SendEvent("Log", "Undo Button");
+            new Thread(delegate () {
+                _googleAnalytics.SendEvent("Log", "Undo Button");
+            }).Start();
+           
             outputTB.Text = _lastLog + outputTB.Text;
             _lastLog = "";
             undoBT.Visible = false;
@@ -248,7 +265,9 @@ namespace BuildTools {
         // Source link clicked
         private void linkLabel_Click(object sender, LinkLabelLinkClickedEventArgs e) {
             System.Diagnostics.Process.Start("https://github.com/DemonWav/BuildToolsGUI");
-            _googleAnalytics.SendEvent("Source", "Link Clicked");
+            new Thread(delegate () {
+                _googleAnalytics.SendEvent("Source", "Link Clicked");
+            }).Start(); 
         }
 
         private void GetVersions() {
@@ -278,28 +297,32 @@ namespace BuildTools {
 
         private static string GetHtml(string url) {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            try {
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            
+                if (response.StatusCode == HttpStatusCode.OK) {
+                    Stream receiveStream = response.GetResponseStream();
+                    StreamReader readStream = null;
 
-            if (response.StatusCode == HttpStatusCode.OK) {
-                Stream receiveStream = response.GetResponseStream();
-                StreamReader readStream = null;
-
-                if (response.CharacterSet == null) {
-                    if (receiveStream != null) {
-                        readStream = new StreamReader(receiveStream);
+                    if (response.CharacterSet == null) {
+                        if (receiveStream != null) {
+                            readStream = new StreamReader(receiveStream);
+                        }
+                    } else {
+                        if (receiveStream != null) {
+                            readStream = new StreamReader(receiveStream, Encoding.GetEncoding(response.CharacterSet));
+                        }
                     }
-                } else {
-                    if (receiveStream != null) {
-                        readStream = new StreamReader(receiveStream, Encoding.GetEncoding(response.CharacterSet));
-                    }
-                }
 
-                string data = readStream.ReadToEnd();
+                    string data = readStream.ReadToEnd();
 
-                response.Close();
-                readStream.Close();
+                    response.Close();
+                    readStream.Close();
 
-                return data;
+                    return data;
+            }
+            } catch (Exception) {
+
             }
             return "";
         }
@@ -317,6 +340,14 @@ namespace BuildTools {
                     items.Add(s);
                 }
                 versionBox.SelectedIndex = 0;
+            }
+        }
+
+        private void autoUpdateCB_Click(object sender, EventArgs e) {
+            if (autoUpdateCB.Checked) {
+                File.WriteAllText(Program.CheckUpdate, "true");
+            } else {
+                File.WriteAllText(Program.CheckUpdate, "false");
             }
         }
     }

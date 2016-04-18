@@ -42,6 +42,11 @@ namespace BuildTools {
         /// </summary>
         private readonly HashSet<IDisposable> _disposables = new HashSet<IDisposable>();
 
+        /// <summary>
+        /// Whether the user had gpg signing enabled
+        /// </summary>
+        private bool isGpg;
+
         private readonly Job _job;
         private readonly GoogleAnalytics _googleAnalytics;
 
@@ -63,8 +68,10 @@ namespace BuildTools {
         /// Returns false if no update is needed.
         /// </summary>
         /// <returns>True if an update is needed.</returns>
-        public bool CheckUpdate() {
+        public bool CheckUpdate(out bool bad) {
+            bad = false;
             if (!GetJson()) {
+                bad = true;
                 return false;
             }
             if (File.Exists(Dir + (string) _json["buildTools"]["name"])) {
@@ -203,7 +210,8 @@ namespace BuildTools {
             _form.AppendText("Checking for update");
             _form.ProgressShow();
             _form.ProgressIndeterminate();
-            bool update = CheckUpdate();
+            bool bad;
+            bool update = CheckUpdate(out bad);
             if (update) {
                 _googleAnalytics.SendEvent("BuildTools Update", "Download");
                 _form.AppendText("Update needed for BuildTools");
@@ -228,7 +236,11 @@ namespace BuildTools {
                 }
                 _form.AppendText("Download complete");
             } else {
-                _form.AppendText("BuildTools is up to date, no need to update");
+                if (!bad) {
+                    _form.AppendText("BuildTools is up to date, no need to update");
+                } else {
+                    return false;
+                }
             }
             return true;
         }
@@ -251,6 +263,11 @@ namespace BuildTools {
             _form.ProgressIndeterminate();
             if (autoUpdate) {
                 if (!UpdateJar()) {
+                    return;
+                }
+            } else {
+                // We still need to grab data even if not updating
+                if (!GetJson()) {
                     return;
                 }
             }
@@ -379,8 +396,16 @@ namespace BuildTools {
                 }
             }
 
+            // Check and fix commit.gpgpsign
+            CheckGpg();
+            if (isGpg) {
+                _form.AppendText("Setting commit.gpgsign to false (needed for BuildTools, will reset once finished)");
+                SetGpg(false);
+            }
+
             _form.AppendRawText("");
             _form.AppendText("Running BuildTools.jar\n");
+            
             // Run Build Tools
             using (Process buildProcess = new Process()) {
                 _disposables.Add(buildProcess);
@@ -409,6 +434,12 @@ namespace BuildTools {
                 } finally {
                     _disposables.Remove(buildProcess);
                 }
+            }
+
+            // Reset gpg if we disabled it
+            if (isGpg) {
+                _form.AppendText("Resetting commit.gpgsign");
+                SetGpg(true);
             }
         }
         //******************//
@@ -607,6 +638,58 @@ namespace BuildTools {
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// Checks if the user is using gpg signing and sets the flag accordingly
+        /// </summary>
+        private void CheckGpg() {
+            using (Process process = new Process()) {
+                _disposables.Add(process);
+                try {
+                    process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.FileName = GitDir + "/bin/git.exe";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.StartInfo.Arguments = "config --global commit.gpgsign";
+
+                    
+                    Console.WriteLine("CHECKING GPG");
+                    process.Start();
+                    AddProcessToJob(process);
+                    string stdout = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit();
+                    Console.WriteLine(stdout);
+                    if (stdout.Trim().ToLower() == "true") {
+                        isGpg = true;
+                    }
+                } catch (Exception) {} finally {
+                    _disposables.Remove(process);
+                }
+            }
+        }
+
+        /// <summary>
+        /// If isGpg flag is true, set commit.gpgpsign to the value given
+        /// <param name="enable">The value to set commit.gpgsign to</param>
+        /// </summary>
+        private void SetGpg(bool enable) {
+            using (Process process = new Process()) {
+                _disposables.Add(process);
+                try {
+                    process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.FileName = GitDir + "/bin/git.exe";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.Arguments = "config --global commit.gpgsign " + enable;
+                    process.Start();
+                    AddProcessToJob(process);
+                    process.WaitForExit();
+                } catch (Exception) { } finally {
+                    _disposables.Remove(process);
+                }
+            }
         }
 
         /// <summary>
