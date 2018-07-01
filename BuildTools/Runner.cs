@@ -98,7 +98,7 @@ namespace BuildTools {
             if (_json == null) {
                 _form.AppendText("Retrieving information from the server");
 
-                _json = DownloadJson("https://www.demonwav.com/buildtools.json");
+                _json = DownloadJson("http://uglylauncher.de/buildtools.json");
 
                 if (_json == null) {
                     _form.AppendText("Error retrieving data, canceling");
