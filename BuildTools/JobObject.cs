@@ -3,8 +3,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace BuildTools {
-    using System.Runtime.ConstrainedExecution;
-    using System.Security;
 
     public class Job : IDisposable {
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]

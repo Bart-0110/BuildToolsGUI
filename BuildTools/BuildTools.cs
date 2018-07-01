@@ -35,7 +35,6 @@ namespace BuildTools {
         private readonly Runner _runner;
         private string _lastLog = "";
         private volatile List<string> _versions = new List<string>();
-        private bool _running;
         private Job _job;
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -84,14 +83,11 @@ namespace BuildTools {
             } else {
                 version = _versions[versionBox.SelectedIndex - 1];
             }
-
-             _running = true;
             
             Thread thread = new Thread(delegate() {
                 _runner.RunBuildTools(update, version);
                 Enable();
                 ProgressHide();
-                _running = false;
             });
             Disable();
             thread.Start();
@@ -99,13 +95,11 @@ namespace BuildTools {
 
         // Update BuildTools Button Clicked
         private void updateBT_Click(object sender, EventArgs e) {
-            _running = true;
 
             Thread thread = new Thread(delegate() {
                 _runner.UpdateJar();
                 Enable();
                 ProgressHide();
-                _running = false;
             });
             Disable();
             thread.Start();
@@ -238,7 +232,7 @@ namespace BuildTools {
 
         // Source link clicked
         private void linkLabel_Click(object sender, LinkLabelLinkClickedEventArgs e) {
-            System.Diagnostics.Process.Start("https://github.com/DemonWav/BuildToolsGUI");
+            System.Diagnostics.Process.Start("https://github.com/0uti/BuildToolsGUI");
         }
 
         private void GetVersions() {
