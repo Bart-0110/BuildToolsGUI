@@ -35,7 +35,6 @@ namespace BuildTools {
         private readonly Runner _runner;
         private string _lastLog = "";
         private volatile List<string> _versions = new List<string>();
-        private readonly GoogleAnalytics _googleAnalytics;
         private bool _running;
         private Job _job;
 
@@ -48,8 +47,7 @@ namespace BuildTools {
         public BuildTools(Guid guid, Job job) {
             InitializeComponent();
             _job = job;
-            _googleAnalytics = new GoogleAnalytics(guid);
-            _runner = new Runner(this, _job, _googleAnalytics);
+            _runner = new Runner(this, _job);
             undoBT.Visible = false;
             progress.Visible = false;
 
@@ -75,10 +73,6 @@ namespace BuildTools {
             }
 
             Console.WriteLine(guid.ToString());
-            new Thread(delegate () {
-                _googleAnalytics.SendEvent("Application", "Start");
-            }).Start();
-            
         }
 
         // Run BuildTools Button Clicked
@@ -94,12 +88,9 @@ namespace BuildTools {
              _running = true;
             
             Thread thread = new Thread(delegate() {
-                _googleAnalytics.SendEvent("BuildTools Run", "Version: " + version);
-                _googleAnalytics.StartTimer("BuildTools Run Time");
                 _runner.RunBuildTools(update, version);
                 Enable();
                 ProgressHide();
-                _googleAnalytics.EndTimer("BuildTools Run Time");
                 _running = false;
             });
             Disable();
@@ -110,15 +101,10 @@ namespace BuildTools {
         private void updateBT_Click(object sender, EventArgs e) {
             _running = true;
 
-            
-
             Thread thread = new Thread(delegate() {
-                _googleAnalytics.SendEvent("BuildTools Update", "Run");
-                _googleAnalytics.StartTimer("BuildTools Update Time");
                 _runner.UpdateJar();
                 Enable();
                 ProgressHide();
-                _googleAnalytics.EndTimer("BuildTools Update Time");
                 _running = false;
             });
             Disable();
@@ -127,10 +113,6 @@ namespace BuildTools {
 
         // Clear Log Button Clicked
         private void clearBT_Click(object sender, EventArgs e) {
-            new Thread(delegate () {
-                _googleAnalytics.SendEvent("Log", "Clear Button");
-            }).Start();
-            
             _lastLog += outputTB.Text;
             outputTB.Text = "";
             undoBT.Visible = true;
@@ -138,10 +120,6 @@ namespace BuildTools {
 
         // Undo Button Clicked
         private void undoBT_Click(object sender, EventArgs e) {
-            new Thread(delegate () {
-                _googleAnalytics.SendEvent("Log", "Undo Button");
-            }).Start();
-           
             outputTB.Text = _lastLog + outputTB.Text;
             _lastLog = "";
             undoBT.Visible = false;
@@ -253,10 +231,6 @@ namespace BuildTools {
         // Exit button pressed
         private void BuildTools_FormClosed(object sender, FormClosedEventArgs e) {
             _runner.CleanUp();
-            if (_running) {
-                _googleAnalytics.SendEvent("BuildTools Run", "Premature Cancelation");
-                _googleAnalytics.EndTimer("BuildTools Run Time");
-            }
             _job.Dispose();
             Application.Exit();
             Environment.Exit(0);
@@ -265,9 +239,6 @@ namespace BuildTools {
         // Source link clicked
         private void linkLabel_Click(object sender, LinkLabelLinkClickedEventArgs e) {
             System.Diagnostics.Process.Start("https://github.com/DemonWav/BuildToolsGUI");
-            new Thread(delegate () {
-                _googleAnalytics.SendEvent("Source", "Link Clicked");
-            }).Start(); 
         }
 
         private void GetVersions() {

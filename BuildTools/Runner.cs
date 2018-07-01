@@ -48,7 +48,6 @@ namespace BuildTools {
         private bool isGpg;
 
         private readonly Job _job;
-        private readonly GoogleAnalytics _googleAnalytics;
 
         /// <summary>
         /// Constructor for the worker class
@@ -56,10 +55,9 @@ namespace BuildTools {
         /// <param name="form">The GUI</param>
         /// <param name="job">Job Object</param>
         /// <param name="googleAnalytics">Google Analytics object</param>
-        public Runner(BuildTools form, Job job, GoogleAnalytics googleAnalytics) {
+        public Runner(BuildTools form, Job job) {
             _form = form;
             _job = job;
-            _googleAnalytics = googleAnalytics;
         }
 
         /// <summary>
@@ -213,7 +211,6 @@ namespace BuildTools {
             bool bad;
             bool update = CheckUpdate(out bad);
             if (update) {
-                _googleAnalytics.SendEvent("BuildTools Update", "Download");
                 _form.AppendText("Update needed for BuildTools");
                 if (!GetJson()) {
                     return false;
@@ -230,7 +227,6 @@ namespace BuildTools {
 
                 _form.AppendText("Downloading BuildTools");
                 if (!DownloadFile(fullUrl, Dir + (string) _json["buildTools"]["name"])) {
-                    _googleAnalytics.SendEvent("BuildTools Update", "Failed");
                     _form.AppendText("BuildTools failed to download");
                     return false;
                 }
@@ -277,20 +273,17 @@ namespace BuildTools {
             if (!CheckJava(out javaInstalled)) {
                 string javaFile = Dir + (string) _json["java"]["name"];
                 if (!javaInstalled) {
-                    _googleAnalytics.SendEvent("Java", "Installed due to not already being installed");
                     // Java is not installed
                     _form.AppendText("Downloading Java installer");
 
                     bool success = DownloadJava(javaFile);
                     if (!success) {
-                        _googleAnalytics.SendEvent("Java", "Could not be downloaded");
                         _form.AppendText("Java could not be downloaded, canceling");
                     }
 
                     _form.ProgressIndeterminate();
                     success = InstallJava(javaFile);
                     if (!success) {
-                        _googleAnalytics.SendEvent("Java", "Could not be installed");
                         _form.AppendText("Java could not be installed, canceling");
                     }
 
@@ -302,7 +295,6 @@ namespace BuildTools {
                     }
                 } else {
                     // Java is installed
-                    _googleAnalytics.SendEvent("Java", "32 bit install, reinstall 64 bit");
                     _form.AppendText("This is a 64 bit operating system, but the 32 bit JRE is installed. Downloading 64 bit JRE");
                     bool success = DownloadJava(javaFile);
                     if (!success) {
@@ -311,7 +303,6 @@ namespace BuildTools {
                         _form.AppendText("Uninstalling current 32 bit JRE");
                         success = UninstallJava();
                         if (!success) {
-                            _googleAnalytics.SendEvent("Java", "Error uninstalling Java");
                             _form.AppendText("There was an error while attempting to uninstall the 32 bit JRE");
                             CheckJava(out javaInstalled);
                             if (javaInstalled) {
@@ -320,7 +311,6 @@ namespace BuildTools {
                                 _form.AppendText("In spite of the error, it seems Java has been uninstalled. Will now install the 64 bit JRE");
                                 success = InstallJava(javaFile);
                                 if (!success) {
-                                    _googleAnalytics.SendEvent("Java", "Could not be installed");
                                     _form.AppendText("Java failed to install, canceling");
                                     return;
                                 }
@@ -332,7 +322,6 @@ namespace BuildTools {
                             _form.AppendText("Installing the 64 bit JRE");
                             success = InstallJava(javaFile);
                             if (!success) {
-                                _googleAnalytics.SendEvent("Java", "Could not be installed");
                                 _form.AppendText("Java failed to install, canceling");
                                 return;
                             }
@@ -347,7 +336,6 @@ namespace BuildTools {
 
             // Git check
             if (!CheckGit()) {
-                _googleAnalytics.SendEvent("Portable Git", "Downloading");
                 string gitFile = Dir + "portable_git.7z.exe";
                 _form.AppendText("Downloading portable Git");
 
@@ -358,7 +346,6 @@ namespace BuildTools {
                     success = DownloadFile((string)_json["git"]["32"], gitFile);
                 }
                 if (!success) {
-                    _googleAnalytics.SendEvent("Portable Git", "Could not be downloaded");
                     _form.AppendText("Portable Git could not be downloaded, canceling");
                     return;
                 }
@@ -377,7 +364,6 @@ namespace BuildTools {
                         if (extractProcess.ExitCode != 0)
                             throw new Exception();
                     } catch (Exception) {
-                        _googleAnalytics.SendEvent("Portable Git", "Could not be installed");
                         _form.AppendText("Portable Git could not be installed, canceling");
                         return;
                     } finally {
