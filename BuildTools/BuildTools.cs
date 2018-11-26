@@ -75,7 +75,7 @@ namespace BuildTools {
         }
 
         // Run BuildTools Button Clicked
-        private void runBT_Click(object sender, EventArgs e) {
+        private void RunBT_Click(object sender, EventArgs e) {
             bool update = autoUpdateCB.Checked;
             string version;
             if (versionBox.SelectedIndex == 0) {
@@ -94,7 +94,7 @@ namespace BuildTools {
         }
 
         // Update BuildTools Button Clicked
-        private void updateBT_Click(object sender, EventArgs e) {
+        private void UpdateBT_Click(object sender, EventArgs e) {
 
             Thread thread = new Thread(delegate() {
                 _runner.UpdateJar();
@@ -106,14 +106,14 @@ namespace BuildTools {
         }
 
         // Clear Log Button Clicked
-        private void clearBT_Click(object sender, EventArgs e) {
+        private void ClearBT_Click(object sender, EventArgs e) {
             _lastLog += outputTB.Text;
             outputTB.Text = "";
             undoBT.Visible = true;
         }
 
         // Undo Button Clicked
-        private void undoBT_Click(object sender, EventArgs e) {
+        private void UndoBT_Click(object sender, EventArgs e) {
             outputTB.Text = _lastLog + outputTB.Text;
             _lastLog = "";
             undoBT.Visible = false;
@@ -231,7 +231,7 @@ namespace BuildTools {
         }
 
         // Source link clicked
-        private void linkLabel_Click(object sender, LinkLabelLinkClickedEventArgs e) {
+        private void LinkLabel_Click(object sender, LinkLabelLinkClickedEventArgs e) {
             System.Diagnostics.Process.Start("https://github.com/0uti/BuildToolsGUI");
         }
 

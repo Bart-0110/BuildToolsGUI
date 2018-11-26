@@ -4,10 +4,9 @@ using System.Diagnostics;
 using System.Net;
 using System.IO;
 using System.Threading;
-using Ionic.Zip;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
-
+using System.IO.Compression;
 
 namespace BuildTools {
 
@@ -74,8 +73,7 @@ namespace BuildTools {
             }
             if (File.Exists(Dir + (string) _json["buildTools"]["name"])) {
                 int number = (int) _api["number"];
-                int currentBuildNumber;
-                bool success = GetBuildNumberFromJar(out currentBuildNumber);
+                bool success = GetBuildNumberFromJar(out int currentBuildNumber);
 
                 if (success) {
                     bool update = currentBuildNumber < number;
@@ -158,25 +156,27 @@ namespace BuildTools {
         /// </summary>
         /// <param name="i">The build number of the jar</param>
         /// <returns>Whether the jar file is valid.</returns>
-        private bool GetBuildNumberFromJar(out int i) {
+        private bool GetBuildNumberFromJar(out int i)
+        {
             _form.AppendText("Checking downloaded BuildTools");
-            try {
-                using (ZipFile zip = ZipFile.Read(Dir + (string) _json["buildTools"]["name"])) {
-                    ZipEntry entry = zip["META-INF/MANIFEST.MF"];
-                    using (MemoryStream stream = new MemoryStream()) {
-                        entry.Extract(stream);
-                        stream.Position = 0;
-
-                        StreamReader reader = new StreamReader(stream);
-
+            try
+            {
+                using (ZipArchive zip = ZipFile.OpenRead(Dir + (string)_json["buildTools"]["name"]))
+                {
+                    ZipArchiveEntry entry = zip.GetEntry("META-INF/MANIFEST.MF");
+                    using (StreamReader reader = new StreamReader(entry.Open()))
+                    {
                         string line;
-                        while ((line = reader.ReadLine()) != null) {
-                            if (line.StartsWith("Implementation-Version: ")) {
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            if (line.StartsWith("Implementation-Version: "))
+                            {
                                 string version = line.Replace("Implementation-Version: ", "");
                                 string[] split = version.Split('-');
 
                                 // at least put some effort into making sure this is a BuildTools jar
-                                if (!"git".Equals(split[0]) || !"BuildTools".Equals(split[1])) {
+                                if (!"git".Equals(split[0]) || !"BuildTools".Equals(split[1]))
+                                {
                                     _form.AppendText("Jar is invalid");
                                     i = 0;
                                     return false;
@@ -190,7 +190,9 @@ namespace BuildTools {
                     i = 0;
                     return false;
                 }
-            } catch (Exception) {
+            }
+            catch (Exception)
+            {
                 _form.AppendText("Jar is invalid");
                 i = 0;
                 return false;
@@ -208,8 +210,7 @@ namespace BuildTools {
             _form.AppendText("Checking for update");
             _form.ProgressShow();
             _form.ProgressIndeterminate();
-            bool bad;
-            bool update = CheckUpdate(out bad);
+            bool update = CheckUpdate(out bool bad);
             if (update) {
                 _form.AppendText("Update needed for BuildTools");
                 if (!GetJson()) {
@@ -269,63 +270,84 @@ namespace BuildTools {
             }
 
             // Java check
-            bool javaInstalled;
-            if (!CheckJava(out javaInstalled)) {
-                string javaFile = Dir + (string) _json["java"]["name"];
-                if (!javaInstalled) {
+            if (!CheckJava(out bool javaInstalled))
+            {
+                string javaFile = Dir + (string)_json["java"]["name"];
+                if (!javaInstalled)
+                {
                     // Java is not installed
                     _form.AppendText("Downloading Java installer");
 
                     bool success = DownloadJava(javaFile);
-                    if (!success) {
+                    if (!success)
+                    {
                         _form.AppendText("Java could not be downloaded, canceling");
                     }
 
                     _form.ProgressIndeterminate();
                     success = InstallJava(javaFile);
-                    if (!success) {
+                    if (!success)
+                    {
                         _form.AppendText("Java could not be installed, canceling");
                     }
 
-                    if (CheckJava()) {
+                    if (CheckJava())
+                    {
                         _form.AppendText("Java installed successfully");
-                    } else {
+                    }
+                    else
+                    {
                         _form.AppendText("Java could not be installed, canceling");
                         return;
                     }
-                } else {
+                }
+                else
+                {
                     // Java is installed
                     _form.AppendText("This is a 64 bit operating system, but the 32 bit JRE is installed. Downloading 64 bit JRE");
                     bool success = DownloadJava(javaFile);
-                    if (!success) {
+                    if (!success)
+                    {
                         _form.AppendText("Unable to download the 64 bit Java installer, will continue with the 32 bit JRE. This may cause the build to fail");
-                    } else {
+                    }
+                    else
+                    {
                         _form.AppendText("Uninstalling current 32 bit JRE");
                         success = UninstallJava();
-                        if (!success) {
+                        if (!success)
+                        {
                             _form.AppendText("There was an error while attempting to uninstall the 32 bit JRE");
                             CheckJava(out javaInstalled);
-                            if (javaInstalled) {
+                            if (javaInstalled)
+                            {
                                 _form.AppendText("Java still seems to be installed, though. Will continue with the 32 bit JRE. This may cause the build to fail");
-                            } else {
+                            }
+                            else
+                            {
                                 _form.AppendText("In spite of the error, it seems Java has been uninstalled. Will now install the 64 bit JRE");
                                 success = InstallJava(javaFile);
-                                if (!success) {
+                                if (!success)
+                                {
                                     _form.AppendText("Java failed to install, canceling");
                                     return;
                                 }
-                                if (!FullJavaCheck()) {
+                                if (!FullJavaCheck())
+                                {
                                     return;
                                 }
                             }
-                        } else {
+                        }
+                        else
+                        {
                             _form.AppendText("Installing the 64 bit JRE");
                             success = InstallJava(javaFile);
-                            if (!success) {
+                            if (!success)
+                            {
                                 _form.AppendText("Java failed to install, canceling");
                                 return;
                             }
-                            if (!FullJavaCheck()) {
+                            if (!FullJavaCheck())
+                            {
                                 return;
                             }
                         }
@@ -474,8 +496,7 @@ namespace BuildTools {
         }
 
         private bool CheckJava() {
-            bool what;
-            return CheckJava(out what);
+            return CheckJava(out bool what);
         }
 
         /// <summary>

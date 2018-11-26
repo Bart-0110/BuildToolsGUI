@@ -49,7 +49,7 @@
             this.runBT.TabIndex = 0;
             this.runBT.Text = "Run BuildTools";
             this.runBT.UseVisualStyleBackColor = true;
-            this.runBT.Click += new System.EventHandler(this.runBT_Click);
+            this.runBT.Click += new System.EventHandler(this.RunBT_Click);
             // 
             // updateBT
             // 
@@ -61,7 +61,7 @@
             this.updateBT.TabIndex = 1;
             this.updateBT.Text = "Update BuildTools";
             this.updateBT.UseVisualStyleBackColor = true;
-            this.updateBT.Click += new System.EventHandler(this.updateBT_Click);
+            this.updateBT.Click += new System.EventHandler(this.UpdateBT_Click);
             // 
             // autoUpdateCB
             // 
@@ -104,7 +104,7 @@
             this.clearBT.TabIndex = 4;
             this.clearBT.Text = "Clear Log";
             this.clearBT.UseVisualStyleBackColor = true;
-            this.clearBT.Click += new System.EventHandler(this.clearBT_Click);
+            this.clearBT.Click += new System.EventHandler(this.ClearBT_Click);
             // 
             // undoBT
             // 
@@ -116,7 +116,7 @@
             this.undoBT.TabIndex = 5;
             this.undoBT.Text = "Undo Clear";
             this.undoBT.UseVisualStyleBackColor = true;
-            this.undoBT.Click += new System.EventHandler(this.undoBT_Click);
+            this.undoBT.Click += new System.EventHandler(this.UndoBT_Click);
             // 
             // progress
             // 
@@ -140,7 +140,7 @@
             this.linkLabel.TabStop = true;
             this.linkLabel.Text = "View Source";
             this.linkLabel.VisitedLinkColor = System.Drawing.Color.Blue;
-            this.linkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabel_Click);
+            this.linkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabel_Click);
             // 
             // versionBox
             // 
