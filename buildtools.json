@@ -7,12 +7,12 @@
     "name": "",
     "uninstaller": {
       "name": "UninstallJava.exe",
-      "url": "http://uglylauncher.de/UninstallJava.exe"
+      "url": "https://bart-0110.github.io/BuildToolsGUI/UninstallJava.exe"
     }
   },
   "git": {
-    "64": "http://uglylauncher.de/PortableGit-2.18.0-64-bit.7z.exe",
-    "32": "http://uglylauncher.de/PortableGit-2.18.0-32-bit.7z.exe"
+    "64": "https://bart-0110.github.io/BuildToolsGUI/PortableGit-2.18.0-64-bit.7z.exe",
+    "32": "https://bart-0110.github.io/BuildToolsGUI/PortableGit-2.18.0-32-bit.7z.exe"
   }
 }
  
