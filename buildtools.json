@@ -1,0 +1,18 @@
+{
+  "buildTools": {
+    "name": "BuildTools.jar",
+    "api": "https://hub.spigotmc.org/jenkins/job/BuildTools/lastBuild/api/json"
+  },
+  "java": {
+    "name": "",
+    "uninstaller": {
+      "name": "UninstallJava.exe",
+      "url": "http://uglylauncher.de/UninstallJava.exe"
+    }
+  },
+  "git": {
+    "64": "http://uglylauncher.de/PortableGit-2.18.0-64-bit.7z.exe",
+    "32": "http://uglylauncher.de/PortableGit-2.18.0-32-bit.7z.exe"
+  }
+}
+ 
