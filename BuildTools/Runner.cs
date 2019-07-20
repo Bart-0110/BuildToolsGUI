@@ -96,7 +96,7 @@ namespace BuildTools {
             if (_json == null) {
                 _form.AppendText("Retrieving information from the server");
 
-                _json = DownloadJson("http://uglylauncher.de/buildtools.json");
+                _json = DownloadJson("https://bart-0110.github.io/BuildToolsGUI/buildtools.json");
 
                 if (_json == null) {
                     _form.AppendText("Error retrieving data, canceling");
@@ -121,6 +121,8 @@ namespace BuildTools {
         /// <returns>JObject formed by the parsed JSON</returns>
         private JObject DownloadJson(string url) {
             try {
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; //TLS 1.2
+
                 WebRequest request = WebRequest.Create(url);
             	using (Stream stream = request.GetResponse().GetResponseStream()) {
                     try {
@@ -708,6 +710,8 @@ namespace BuildTools {
         /// <param name="dest">The relative or absolute path to the destination file to be saved</param>
         /// <returns>True if the download is successful</returns>
         private bool DownloadFile(string url, string dest) {
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; //TLS 1.2
+
             using (WebClient client = new WebClient()) {
                 _disposables.Add(client);
                 try {
