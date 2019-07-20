@@ -232,7 +232,7 @@ namespace BuildTools {
 
         // Source link clicked
         private void LinkLabel_Click(object sender, LinkLabelLinkClickedEventArgs e) {
-            System.Diagnostics.Process.Start("https://github.com/0uti/BuildToolsGUI");
+            System.Diagnostics.Process.Start("https://github.com/Bart-0110/BuildToolsGUI");
         }
 
         private void GetVersions() {
