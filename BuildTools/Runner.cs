@@ -381,7 +381,7 @@ namespace BuildTools {
                     try {
                         extractProcess.StartInfo.FileName = gitFile;
                         extractProcess.StartInfo.UseShellExecute = true;
-                        extractProcess.StartInfo.Arguments = "-gm1 -nr -y";
+                        extractProcess.StartInfo.Arguments = "-y -gm1 -nr";
                         extractProcess.Start();
                         AddProcessToJob(extractProcess);
                         extractProcess.WaitForExit();
